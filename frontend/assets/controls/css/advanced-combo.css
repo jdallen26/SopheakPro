@@ -1,0 +1,182 @@
+/* css */
+/* File: `static/controls/css/advanced-combo.css` */
+
+/* Base root */
+.advanced-combo {
+    position: relative;
+    width: 100%;
+    font-family: inherit;
+}
+
+/* input */
+.advanced-combo .combo-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: .25rem .5rem;
+    font-size: .875rem;
+    line-height: 1.2;
+    border: 1px solid rgba(0, 0, 0, .12);
+    border-radius: .25rem;
+    background: #fff;
+    color: #212529;
+}
+
+/*
+  Floating list:
+  - When the list is appended to `document.body`, `advanced-combo.js` sets many properties
+    inline (often with `!important`). Avoid using `!important` for those same properties here.
+  - Provide minimal, non-conflicting defaults.
+*/
+ul.combo-list,
+.combo-list {
+    box-sizing: border-box;      /* safe */
+    min-width: 120px;            /* safe fallback; JS sets inline too */
+    background-clip: padding-box;
+    /* visual fallbacks (will be overridden by JS inline important when needed) */
+    box-shadow: 0 .25rem .5rem rgba(0, 0, 0, .08);
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+/* Default rules for lists that remain inside the `.advanced-combo` root.
+   These properties are fine to set here because they apply only to in-root lists.
+*/
+.advanced-combo .combo-list {
+    position: absolute;
+    z-index: 1000;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: #212529;
+    border: 1px solid rgba(0, 0, 0, .12);
+    border-radius: .25rem;
+    max-height: 40vh;
+    overflow: auto;
+    box-sizing: border-box;
+    opacity: 1;
+    background-clip: padding-box;
+    min-width: 120px;
+    background-color: #ffffff;
+}
+
+/* remove any marker explicitly for modern browsers */
+.combo-list li::marker {
+    display: none;
+}
+
+/* positioning for lists that remain inside the .advanced-combo root */
+.advanced-combo .combo-list {
+    left: 0;
+    right: 0;
+}
+
+/* item styles (applies to items whether the ul is inside root or moved to body) */
+.advanced-combo .combo-item,
+.combo-list .combo-item {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    padding: .35rem .5rem;
+    cursor: pointer;
+    font-size: .875rem;
+    border-bottom: 1px solid rgba(0, 0, 0, .02);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-clip: padding-box;
+    list-style: none; /* defensive */
+    background-color: transparent; /* paint items on top of ul's background */
+    transition: background-color .12s ease, color .12s ease;
+}
+
+.advanced-combo .combo-item:last-child,
+.combo-list .combo-item:last-child {
+    border-bottom: 0;
+}
+
+/* hover and selected state for items (no `!important` required; these target the LI) */
+.advanced-combo .combo-item[aria-selected="true"],
+.advanced-combo .combo-item:hover,
+.combo-list .combo-item[aria-selected="true"],
+.combo-list .combo-item:hover {
+    background-color: rgba(50, 50, 0, .075);
+    color: inherit;
+}
+
+.advanced-combo .combo-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    object-fit: contain;
+    flex: 0 0 1.25rem;
+    border-radius: .125rem;
+    background: transparent;
+}
+
+.advanced-combo .combo-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.advanced-combo .combo-meta {
+    color: #6c757d;
+    font-size: .8rem;
+    margin-left: auto;
+    padding-left: .5rem;
+    flex: 0 0 auto;
+}
+
+.advanced-combo .combo-note,
+.combo-list .combo-note {
+    padding: .35rem .5rem;
+    color: #6c757d;
+    font-size: .85rem;
+}
+
+/* tags */
+.advanced-combo .combo-tags {
+    display: flex;
+    gap: .25rem;
+    flex-wrap: wrap;
+    margin-top: .25rem;
+}
+
+.advanced-combo .combo-tag {
+    background: #e9ecef;
+    border-radius: .25rem;
+    padding: .125rem .35rem;
+    font-size: .8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+}
+
+.advanced-combo .combo-tag button,
+.advanced-combo .combo-tag .combo-tag-remove {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    color: #495057;
+}
+
+.advanced-combo .combo-item-check {
+    margin: 0 .25rem 0 0;
+    flex: 0 0 auto;
+}
+
+/* responsive tweaks */
+@media (max-width: 576px) {
+    .advanced-combo .combo-list {
+        max-height: 10rem;
+    }
+
+    .advanced-combo .combo-input {
+        font-size: .875rem;
+    }
+}

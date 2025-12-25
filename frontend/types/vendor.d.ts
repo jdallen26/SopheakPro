@@ -1,0 +1,5 @@
+declare module 'bootstrap/dist/js/bootstrap.bundle.js'
+declare module '@fortawesome/fontawesome-free/js/all.js'
+declare module 'bootstrap/dist/js/bootstrap.bundle.min.js'
+declare module '@fortawesome/fontawesome-free/js/all.min.js'
+declare module '@vendor/*'

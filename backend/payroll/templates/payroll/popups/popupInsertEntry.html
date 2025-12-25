@@ -1,0 +1,191 @@
+<!-- language: html -->
+<!-- File: payroll/templates/payroll/popups/popupInsertEntry.html -->
+<style>
+    #insertEntryForm .form-label {
+        margin-bottom: .1rem; /* default is .5rem; use .125rem/.25rem/0 as needed */
+        font-size: .9rem;
+    }
+
+    #insertEntryForm .form-control,
+    #insertEntryForm .form-select,
+    #insertEntryForm textarea {
+        padding: .25rem .5rem; /* default is .375rem .75rem; adjust as needed */
+        font-size: .875rem;
+        line-height: 1.2rem;
+        border-radius: .25rem;
+        height: auto;
+        min-height: calc(1.2rem + .5rem);
+    }
+
+    #insertEntryForm .form-check-input {
+        width: 1rem;
+        height: 1rem;
+    }
+
+</style>
+<div class="modal fade" id="insertEntryModal" tabindex="-1" aria-labelledby="insertEntryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="insertEntryModalLabel">Insert Entry</h5>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <form id="insertEntryForm">
+                    <!-- Customer Dropdown -->
+                    <div class="row g-2">
+                        <div class="12">
+                            <div id="siteComboRoot" class="advanced-combo">
+                                <input type="text" class="combo-input form-control" placeholder="Type to search sites"
+                                       aria-haspopup="listbox" autocomplete="off">
+                                <ul class="combo-list" role="listbox" hidden></ul>
+                                <div class="combo-tags" aria-hidden="true"></div>
+
+                                <!-- preserve existing id so other JS keeps working -->
+                                <input type="hidden" id="insert-payroll-entry-site-modal" name="site"
+                                       class="combo-hidden-id" value="">
+                                <input type="hidden" class="combo-hidden-ids" value="[]">
+                                <input type="hidden" class="combo-hidden-text" value="">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-primary mx-auto" id="insertEntryBtn">Insert New Entry</button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="exitBtn">Exit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    // Insert Entry Form functionality
+    import {AdvancedCombo} from '/static/controls/js/advanced-combo.js';
+
+    (function () {
+        // Initialize modal when DOM is ready
+        document.addEventListener('DOMContentLoaded', function () {
+            // Use jQuery inside the DOMContentLoaded handler (jQuery script is included later in base.html,
+            // but DOMContentLoaded will fire after scripts are parsed/executed)
+            const insertEntryModal = new bootstrap.Modal(document.getElementById('insertEntryModal'));
+            const enterBtn = document.getElementById('insertEntryBtn');
+
+            // Expose modal show function globally
+            window.showInsertEntryModal = function () {
+                const modalEl = document.getElementById('insertEntryModal');
+                if (!modalEl) {
+                    console.error('Insert Entry Modal element not found');
+                    return;
+                }
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+            }
+
+            // Validate form
+            function validateForm() {
+                let form = document.getElementById('insertEntryForm');
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return false;
+                }
+
+                // Validate date format
+                let dateInput = $('#beginningDate').val();
+                let datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+                if (!datePattern.test(dateInput)) {
+                    alert('Please enter date in mm/dd/yyyy format');
+                    return false;
+                }
+
+                return true;
+            }
+
+            // Submit Insert Entry
+            function submitNewPayrollEntry() {
+                let formData = {
+                    employee_id: $('#employeeSelect').val(),
+                    employee_name: $('#employeeSelect option:selected').text(),
+                    beginning_date: $('#beginningDate').val(),
+                    route: $('#routeSelect').val(),
+                    special_equipment: $('#specialEquipment').is(':checked')
+                };
+
+                console.log('New Entry:', formData);
+
+                // Unblur the header subtitle and table
+                $('.header-subtitle').removeClass('initial-blur');
+                $('.payroll-table').removeClass('initial-blur');
+
+                // Close the modal
+                insertEntryModal.hide();
+
+                // Reload the page to filter table by selected data
+                location.reload();
+            }
+
+            // Load New Entry defaults
+            function loadEntryDefaults() {
+                return null;
+            }
+
+            // Attach click event to the button instead of form submit button
+            enterBtn.addEventListener('click', async function (e) {
+                e.preventDefault(); // Prevent default submit
+                const form = document.querySelector('#insertEntryModal form');
+                if (!form) return;
+                if (validateForm()) {
+                    submitNewPayrollEntry();
+                }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const siteComboRoot = document.getElementById('siteComboRoot');
+            const modalEl = document.getElementById('insertEntryModal');
+            if (siteComboRoot) {
+                const fetcher = async (q = '') => {
+                    let url;
+                    if (q.trim()) {
+                        url = `/api/payroll/sites/?q=${encodeURIComponent(q)}&show_all=1`;
+                    } else {
+                        url = `/api/payroll/sites/`;
+                    }
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error('API error');
+                    const json = await res.json();
+                    const sites = json.sites || [];
+                    return sites.map(s => ({
+                        id: String(s.cust_id),
+                        label: `${String(s.cust_id).padStart(10, ' ')} - ${s.company || String(s.cust_id)}`,
+                        icon: '',
+                        meta: ''
+                    }));
+                };
+                const siteCombo = new AdvancedCombo(siteComboRoot, {
+                    fetcher,
+                    multi: false,
+                    showCheckbox: false,
+                    showIcon: false,
+                    allowFreeText: false,
+                    confirmCreate: false,
+                    debounceMs: 160,
+                    minChars: 0
+                });
+                // Load all sites on init
+                if (modalEl) {
+                    modalEl.addEventListener('shown.bs.modal', () => {
+                        siteCombo.input.dispatchEvent(new Event('input', {bubbles: true}));
+                    });
+                }
+            }
+        });
+
+    })();
+
+</script>
+

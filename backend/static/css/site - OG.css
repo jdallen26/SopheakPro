@@ -1,0 +1,132 @@
+:root {
+    --payroll-width: 1200px; /* fallback reference (not used for full-width layout) */
+    --payroll-gap: 1rem;
+}
+
+/* Include padding/borders inside element size calculations */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* Prevent main window scrolling and ensure full-height layout */
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden; /* only .table-scroll should scroll */
+}
+
+/* Page shell: full-viewport column layout with 1px outer margin each side */
+.container-fluid.p-0 {
+    display: flex;
+    flex-direction: column;
+    /* subtract 2px to account for top+bottom margins if needed */
+    height: calc(100vh - 2px);
+    margin: 1px; /* 1px margin on all sides */
+    padding: 0;
+}
+
+    /* Header: full width inside the container, rounded top corners */
+    .container-fluid.p-0 > .row.bg-primary {
+        flex: 0 0 auto;
+        width: 100%;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+        overflow: hidden; /* respect border-radius */
+        /* horizontal padding to align header content with table cells */
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        box-sizing: border-box;
+        margin-left: 1px;
+    }
+
+    /* Table-row: flexible area filling remaining viewport space */
+    .container-fluid.p-0 > .table-row {
+        flex: 1 1 auto;
+        min-height: 0; /* critical for proper flex child shrinking */
+        width: 100%;
+    }
+
+    /* Footer row (buttons) stays natural height and spans full width */
+    .container-fluid.p-0 > .row.g-0.page-footer {
+        flex: 0 0 auto;
+        width: 100%;
+    }
+
+/* Table scroll container: full width inside the 1px-margined page */
+.table-scroll {
+    width: 100%;
+    box-sizing: border-box;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: auto; /* allow horizontal scrolling on narrow viewports */
+    -webkit-overflow-scrolling: touch;
+    background: transparent;
+    padding: 0;
+}
+
+/* Table baseline */
+.table {
+    margin-bottom: 0;
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; /* respect column widths and avoid layout shift */
+    min-width: 0; /* allow horizontal shrink; horizontal scroll is handled by .table-scroll */
+}
+
+/* Sticky header inside the scroll container */
+.table-scroll thead th,
+.table-scroll table th {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background-color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Keep most cells on one line for readability; enable wrapping per-column if needed later */
+.payroll-table th,
+.payroll-table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* If a column should wrap (e.g. description), add a class on the TD and override:
+   .payroll-table td.description { white-space: normal; word-break: break-word; } */
+
+/* Avoid double rounding for inner elements */
+.table-border-radius,
+.table-border-radius table {
+    border-radius: 0;
+}
+
+/* Export button styles */
+.export-btn {
+    padding: 0.1rem 0.17rem;
+    font-size: 0.47rem;
+    border-radius: 0.13rem;
+    min-width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .export-btn i {
+        font-size: 0.5rem;
+    }
+
+/* Export grid layout */
+.export-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.export-row {
+    display: flex;
+    gap: 1px;
+}

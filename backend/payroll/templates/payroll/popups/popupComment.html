@@ -1,0 +1,109 @@
+<!-- Insert Entry Modal -->
+<div class="modal fade" id="modalModal" tabindex="-1" aria-labelledby="modalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalModalLabel">TITLE</h5>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <form id="modalModalForm">
+
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-primary mx-auto" id="actionBtn">ACTION</button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="exitBtn">Exit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Insert Entry Form functionality
+    (function () {
+        // Initialize modal when DOM is ready
+        document.addEventListener('DOMContentLoaded', function () {
+            // Use jQuery inside the DOMContentLoaded handler (jQuery script is included later in base.html,
+            // but DOMContentLoaded will fire after scripts are parsed/executed)
+            const modalModal = new bootstrap.Modal(document.getElementById('modalModal'));
+            const enterBtn = document.getElementById('actionBtn');
+
+            // Expose modal show function globally
+            window.showmodalModal = function () {
+                const modalEl = document.getElementById('modalModal');
+                if (!modalEl) {
+                    console.error('Modal element not found');
+                    return;
+                }
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+            }
+
+            // Validate form
+            function validateForm() {
+                let form = document.getElementById('actionBtn');
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return false;
+                }
+
+                // Validate date format
+                let dateInput = $('#beginningDate').val();
+                let datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+                if (!datePattern.test(dateInput)) {
+                    alert('Please enter date in mm/dd/yyyy format');
+                    return false;
+                }
+
+                return true;
+            }
+
+            // Submit Insert Entry
+            function submitNewPayrollEntry() {
+                let formData = {
+                    employee_id: $('#employeeSelect').val(),
+                    employee_name: $('#employeeSelect option:selected').text(),
+                    beginning_date: $('#beginningDate').val(),
+                    route: $('#routeSelect').val(),
+                    special_equipment: $('#specialEquipment').is(':checked')
+                };
+
+                // submit formData as update package
+
+
+                console.log('New Entry:', formData);
+
+                // Unblur the header subtitle and table
+                $('.header-subtitle').removeClass('initial-blur');
+                $('.payroll-table').removeClass('initial-blur');
+
+                // Close the modal
+                modalModal.hide();
+
+                // Reload the page to filter table by selected data
+                location.reload();
+            }
+
+            // Load New Entry defaults
+            function loadEntryDefaults () {
+                return null;
+            }
+
+        // Attach click event to the button instead of form submit
+            enterBtn.addEventListener('click', async function (e) {
+                e.preventDefault(); // Prevent default submit
+                const form = document.querySelector('#modalModal form');
+                if (!form) return;
+                if (validateForm()) {
+                    submitNewPayrollEntry();
+                }
+            });
+        });
+    })();
+
+</script>

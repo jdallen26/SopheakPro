@@ -1,0 +1,246 @@
+<!doctype html>
+<div id="payrollSelectionModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Payroll Selection</h5>
+            </div>
+            <form method="get" action="">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="pselect-employee-modal" class="form-label">Employee:</label>
+                        <select id="pselect-employee-modal" name="employee" class="form-select">
+                            <option value="">Select Employee…</option>
+                            {% for emp in employee_options %}
+                                <option value="{{ emp.id }}" {% if pselect_data.emp_id == emp.id %}selected{% endif %}>{{ emp.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="pselect-beginning-modal" class="form-label">Beginning Date:</label>
+                        <input id="pselect-beginning-modal" name="date" class="form-control" type="date"
+                               value="{% if pselect_data.old_start %}{{ pselect_data.old_start|date:'Y-m-d' }}{% endif %}"/>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pselect-route-modal" class="form-label">Route:</label>
+                        <select id="pselect-route-modal" name="route" class="form-select">
+                            <option value="">Select Route…</option>
+                            {% for route in route_options %}
+                                <option value="{{ route.id }}" {% if pselect_data.route_id == route.id %}selected{% endif %}>{{ route.route }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input id="pselect-special-equipment-modal" name="special_equipment" class="form-check-input" type="checkbox"
+                               {% if pselect_data.special_equipment %}checked{% endif %}/>
+                        <label class="form-check-label" for="pselect-special-equipment-modal">Special Equipment</label>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" id="pselect-enter-modal" class="btn btn-primary">Enter Payroll</button>
+                    <button type="button" id="btn-close" class="btn btn-danger" data-bs-dismiss="modal">Exit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function () {
+        function getWeekStart(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr + 'T00:00:00');
+            const day = d.getDay(); // 0 (Sun) .. 6 (Sat)
+            const diffToMonday = (day === 0) ? -6 : (1 - day);
+            const monday = new Date(d);
+            monday.setDate(d.getDate() + diffToMonday);
+            const yyyy = monday.getFullYear();
+            const mm = String(monday.getMonth() + 1).padStart(2, '0');
+            const dd = String(monday.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function mdYToISO(mdy) {
+            if (!mdy) return '';
+            const parts = mdy.split('/');
+            if (parts.length !== 3) return '';
+            const mm = parts[0].padStart(2, '0');
+            const dd = parts[1].padStart(2, '0');
+            const yyyy = parts[2];
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function isoToDisplay(iso) {
+            if (!iso) return '';
+            const d = new Date(iso + 'T00:00:00');
+            if (isNaN(d)) return '';
+            return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+        }
+
+        function ensureHiddenEmployeeOption(selectEl, empId, empName) {
+            if (!empId || !empName || !selectEl) return;
+            Array.from(selectEl.options).forEach(o => {
+                if (o.value === empId && o.text === empName) o.remove();
+            });
+            const opt = document.createElement('option');
+            opt.value = empId;
+            opt.text = empName;
+            opt.hidden = true;
+            selectEl.appendChild(opt);
+        }
+
+        function updateDonebySelectsForEmployee(empId, empName) {
+            document.querySelectorAll('.doneby-select').forEach(selectEl => {
+                const td = selectEl.closest('td');
+                const currentSpan = td ? td.querySelector('.doneby-current') : null;
+                ensureHiddenEmployeeOption(selectEl, empId, empName);
+                if (currentSpan) {
+                    if (selectEl.value === empId && empId) {
+                        currentSpan.style.display = 'none';
+                    } else {
+                        currentSpan.style.display = '';
+                    }
+                }
+            });
+        }
+
+        // New: update or create visible filter summary next to payroll header
+        // File: `payroll/templates/payroll/popups/popupPayrollSelectionForm.html`
+        // Replace the previous updateHeaderFilterSummary implementation with this:
+
+        function updateHeaderFilterSummary(route_text, week_of_iso, employee_name, special_equipment) {
+            const parts = [];
+            if (route_text) parts.push(`Route: ${route_text}`);
+            if (week_of_iso) parts.push(`WeekOf: ${isoToDisplay(week_of_iso)}`);
+            if (employee_name) parts.push(`Employee: ${employee_name}`);
+            if (special_equipment) parts.push(`SpecialEquip: ${special_equipment ? 'True' : 'False'}`);
+
+            if (parts.length === 0) return; // nothing to show
+
+            // Show browser popup with the filter string
+            window.alert('Filters: ' + parts.join(' · '));
+        }
+
+
+        function applyPayrollFilter({route_text, week_of_iso, employee_id, employee_name, special_equipment}) {
+            // Update hidden inputs on index page (these IDs exist in index.html)
+            const hidEmp = document.getElementById('pselect-emp-id');
+            const hidEmpName = document.getElementById('pselect-employee-name');
+            const hidOldStart = document.getElementById('pselect-old-start');
+            const hidRoute = document.getElementById('pselect-route');
+            const hidSpecial = document.getElementById('pselect-special-equipment');
+
+            if (hidEmp) hidEmp.value = employee_id || '';
+            if (hidEmpName) hidEmpName.value = employee_name || '';
+            if (hidOldStart) hidOldStart.value = week_of_iso || '';
+            if (hidRoute) hidRoute.value = route_text || '';
+            if (hidSpecial) hidSpecial.value = special_equipment ? '1' : '0';
+
+            // Update header primary pieces
+            const headerEmployee = document.getElementById('header-employee');
+            const headerWeek = document.getElementById('header-weekof');
+            const headerRoute = document.getElementById('header-route');
+
+            if (headerEmployee) {
+                const empLabel = employee_name ? employee_name : '[Employee]';
+                const empIdLabel = employee_id ? employee_id : '[Employee ID]';
+                headerEmployee.textContent = `${empLabel} - (${empIdLabel})`;
+            }
+            if (headerWeek) {
+                headerWeek.textContent = week_of_iso ? isoToDisplay(week_of_iso) : '[WeekOf]';
+            }
+            if (headerRoute) {
+                headerRoute.textContent = route_text || 'Z';
+            }
+
+            // update visible filter summary (new)
+            updateHeaderFilterSummary(route_text, week_of_iso, employee_name, special_equipment);
+
+            // Update DoneBy selects to include selected employee and adjust visibility
+            updateDonebySelectsForEmployee(employee_id, employee_name);
+
+            // Removed client-side table filtering to rely on server-side filtering via form submit
+        }
+
+        const enterBtn = document.getElementById('pselect-enter-modal');
+        const closeBtn = document.getElementById('btn-close');
+        if (!enterBtn) return;
+
+        // Attach click event to the button instead of form submit
+        enterBtn.addEventListener('click', async function(e) {
+            e.preventDefault(); // Prevent default submit
+
+            const form = document.querySelector('#payrollSelectionModal form');
+            if (!form) return;
+
+            enterBtn.disable = true; // Prevent multiple clicks
+            closeBtn.disable = true
+            enterBtn.setAttribute('aria-disabled', 'true');
+            closeBtn.setAttribute('aria-disabled', 'true');
+            enterBtn.classList.add('opacity-75', 'pointer-events-none');
+            closeBtn.classList.add('opacity-75', 'pointer-events-none');
+
+            const empSelect = document.getElementById('pselect-employee-modal');
+            const dateInput = document.getElementById('pselect-beginning-modal');
+            const routeSelect = document.getElementById('pselect-route-modal');
+            const specialCheckbox = document.getElementById('pselect-special-equipment-modal');
+
+            const empId = empSelect ? empSelect.value : null;
+            const oldstart = dateInput ? dateInput.value : null;
+            const routeText = routeSelect ? routeSelect.options[routeSelect.selectedIndex].text : null;
+            const specialEquipment = specialCheckbox ? specialCheckbox.checked : false;
+
+            const payload = {
+                emp_id: empId,
+                oldstart: oldstart,
+                route: routeText,
+                special_equipment: specialEquipment
+            };
+
+            console.log('Saving payload:', payload['emp_id']);
+
+            // Save to DB via AJAX
+            try {
+                const response = await fetch('/payroll/edit_pselect/1/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                console.log('Save response:', response);
+                if (!response.ok) {
+                    throw new Error('Save failed');
+                }
+                // Set flag to focus on first DoneBy after page load
+                sessionStorage.setItem('justAppliedFilters', '1');
+                // Proceed with redirect with GET params
+                const routeId = routeSelect ? routeSelect.value : '';
+                const specialParam = specialEquipment ? 'on' : '';
+
+                // Redirect to payroll page with parameters: Removed special_equipment param
+                // window.location.href = '/payroll/?employee=' + (empId || '') + '&date=' + (oldstart || '') + '&route=' + routeId + '&special_equipment=' + specialParam;
+                window.location.href = '/payroll/?employee=' + (empId || '') + '&date=' + (oldstart || '') + '&route=' + routeId;
+                enterBtn.disable = false; // Prevent multiple clicks
+                closeBtn.disable = false;
+                enterBtn.removeAttribute('aria-disabled');
+                closeBtn.removeAttribute('aria-disabled');
+                enterBtn.classList.add('opacity-75', 'pointer-events-none');
+                closeBtn.classList.add('opacity-75', 'pointer-events-none');
+
+            } catch (error) {
+                console.log('Save error:', error);
+                // Still proceed with submit even if save fails
+                enterBtn.disable = false; // Prevent multiple clicks
+                closeBtn.disable = false;
+                enterBtn.removeAttribute('aria-disabled');
+                closeBtn.removeAttribute('aria-disabled');
+                enterBtn.classList.add('opacity-75', 'pointer-events-none');
+                closeBtn.classList.add('opacity-75', 'pointer-events-none');
+                form.submit();
+            }
+        });
+    });
+</script>

@@ -1,0 +1,254 @@
+/* Include padding/borders inside element size calculations */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* Prevent main window scrolling and ensure full-height layout */
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden; /* only .table-scroll should scroll */
+}
+
+/* Page shell: full-viewport column layout with 1px outer margin each side */
+.container-fluid.p-0 {
+    display: flex;
+    flex-direction: column;
+    /* subtract 2px to account for top+bottom margins if needed */
+    height: calc(100vh - 2px);
+    padding: 0;
+}
+
+/* Header: full width inside the container, rounded top corners */
+.container-fluid.p-0 > .row.bg-primary {
+    flex: 0 0 auto;
+    width: 100%;
+    height: 65px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    overflow: hidden; /* respect border-radius */
+    /* set container padding to zero so we control column padding explicitly */
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
+    margin-left: 0px;
+}
+
+/* Ensure header text lines up with table cell content without moving the table.
+   Use same horizontal inset as table cells (0.25rem). Do not force display:flex
+   here so template utility classes can control vertical stacking. */
+.container-fluid.p-0 > .row.bg-primary .col-6.p-2 {
+    /* match table cell horizontal padding (0.25rem) */
+    padding: 0.15rem 0.25rem;
+}
+
+/* Remove previous ad-hoc left offset and rely on column padding above */
+.container-fluid.p-0 > .row.bg-primary #header-employee {
+    display: inline-block;
+    margin-left: 0;
+}
+
+/* Table-row: flexible area filling remaining viewport space */
+.container-fluid.p-0 > .table-row {
+    flex: 1 1 auto;
+    min-height: 0; /* critical for proper flex child shrinking */
+    width: 100%;
+}
+
+/* Footer row (buttons) stays natural height and spans full width */
+.container-fluid.p-0 > .row.g-0.page-footer {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+/* Table scroll container: full width inside the 1px-margined page */
+.table-scroll {
+    width: 100%;
+    box-sizing: border-box;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    height: 100%;
+    min-height: 0;
+    /* Always reserve vertical scrollbar space to prevent layout shifts */
+    overflow-y: scroll;
+    overflow-x: auto; /* allow horizontal scrolling on narrow viewports */
+    -webkit-overflow-scrolling: touch;
+    background: transparent;
+    /* Align table content with header text (matches .p-2 column padding) */
+    padding: 0;
+    /* Keep scrollbar gutter stable on supporting browsers as well */
+    scrollbar-gutter: stable both-edges;
+}
+
+/* Table baseline */
+.table {
+    margin-bottom: 0;
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; /* use col/thead widths consistently */
+    min-width: 0;
+}
+
+/* Shift only the payroll data table left so its first-cell content lines up with the page header.
+This uses the measured offset (11.5px) from the page inspection. */
+.table.table-sm.table-bordered.payroll-table {
+    margin-left: -18px;
+    width: 100.75%;
+}
+
+/* Cell padding and overflow behavior (compact) */
+.payroll-table th,
+.payroll-table td {
+    padding: 0.15rem 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Description column wraps */
+.payroll-table td.description {
+    white-space: normal;
+    word-break: break-word;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Keep other cells single-line */
+.payroll-table td:not(.description) {
+    white-space: nowrap;
+}
+
+/* Use Bootstrap form controls for inputs and selects, keep them full-width but compact */
+.payroll-table .form-control,
+.payroll-table .form-select {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Soft defaults for small controls */
+/*.payroll-table .form-control-sm,
+.payroll-table .form-select-sm {
+    font-size: 10px;
+    line-height: 1.15;
+    box-sizing: border-box;
+}*/
+
+/* Sticky header inside the scroll container */
+.table-scroll thead th,
+.table-scroll table th {
+    position: sticky;
+    top: -0.1px;
+    z-index: 50;
+    background-color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Avoid double rounding for inner elements */
+.table-border-radius,
+.table-border-radius table {
+    border-radius: 0;
+}
+
+.payroll-button {
+    padding: 0 15px 0 15px;
+    font-size: 0.9rem;
+    height: 25px;
+}
+
+/* Export button styles (unchanged) */
+.export-btn {
+    padding: 0.1rem 0.17rem;
+    font-size: 0.47rem;
+    border-radius: 0.13rem;
+    min-width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.export-btn i {
+    font-size: 0.5rem;
+}
+
+.export-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.export-row {
+    display: flex;
+    gap: 1px;
+}
+
+/* Page-scoped override to ensure data text uses our size (loaded after vendor CSS) */
+.container-fluid.p-0 .table.table-sm.table-bordered.payroll-table tbody td {
+    font-size: 14px;
+    line-height: 1.15;
+}
+
+/* ----------------------------------------------------------------------------
+   Precise control sizing: force text inputs to match select box compact size.
+   This override specifically targets Bootstrap small form controls inside the
+   payroll table to ensure inputs match the select visuals and do not appear
+   oversized.
+   ---------------------------------------------------------------------------- */
+/* Precise control sizing: use fixed pixel height so inputs and selects match */
+.container-fluid.p-0 .payroll-table .form-select.form-select-sm {
+    height: 16px;
+    min-height: 16px;
+    max-height: 16px;
+    padding: 0.12rem 0.3rem;
+    font-size: 11px;
+    line-height: 1.0;
+    box-sizing: border-box;
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+.container-fluid.p-0 .payroll-table .form-control.form-control-sm {
+    height: 16px;
+    min-height: 16px;
+    max-height: 16px;
+    padding: 0.10rem 0.3rem; /* slightly tighter for inputs */
+    font-size: 14px;
+    line-height: 1.0;
+    box-sizing: border-box;
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+
+/* If some browser/vendor rules still force different internal heights for selects,
+   normalize appearance by forcing border-box and a slightly smaller inner line-height
+   on inputs only (inputs were the ones appearing enormous previously). */
+.container-fluid.p-0 .payroll-table .form-control.form-control-sm {
+    /* keep same as selects but tighten a bit if needed */
+    padding-top: 0.10rem;
+    padding-bottom: 0.10rem;
+    line-height: 1;
+}
+
+/* last-resort escalation if vendor specificity still wins:
+   uncomment only if absolutely necessary after testing.
+.container-fluid.p-0 .payroll-table .form-control.form-control-sm { height: 1.6rem !important; }
+.container-fluid.p-0 .payroll-table .form-select.form-select-sm { height: 1.6rem !important; }
+*/
+
+/* Fix: keep footer visually above table content when table-scroll becomes overflow:visible */
+.container-fluid.p-0 > .row.g-0.page-footer {
+    position: relative;
+    z-index: 100;
+    background: #fff;
+}
+
+/* Remove shifting outline on select/input focus � use non-layout box-shadow */
+.payroll-table tbody td input:focus,
+.payroll-table tbody td select:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: inherit;
+}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% include 'partials/_head.html' %}
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="d-flex flex-column app-shell">
+    <!-- {# {% include 'partials/_header.html' %} #}
+    {# {% include 'partials/_nav.html' %} #} -->
+
+    <div class="container-fluid d-flex flex-column app-content">
+        <div class="row flex-grow-1 h-100">
+            <main class="col-12 pt-1 pb-0 h-100 scroll-area">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- {% include 'partials/_footer.html' %} -->
+    {% load static %}
+    <!-- jQuery (required for Bootstrap and DataTables) -->
+    <script src="{% static 'vendor/jquery/jquery.min.js' %}" onerror="this.onerror=null;this.src='https://code.jquery.com/jquery-3.7.1.min.js'"></script>
+
+    <!-- Bootstrap Bundle with Popper (required for toast, tooltips, etc.) -->
+    <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js'"></script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

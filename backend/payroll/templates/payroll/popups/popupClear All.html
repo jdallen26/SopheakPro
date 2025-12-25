@@ -1,0 +1,343 @@
+<!-- Insert Entry Modal -->
+<div class="modal fade" id="modalModal" tabindex="-1" aria-labelledby="modalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalModalLabel">TITLE</h5>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <form id="modalModalForm">
+
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-primary mx-auto" id="actionBtn">ACTION</button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="exitBtn">Exit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Insert Entry Form functionality
+    (function () {
+        // Initialize modal when DOM is ready
+        document.addEventListener('DOMContentLoaded', function () {
+            // Use jQuery inside the DOMContentLoaded handler (jQuery script is included later in base.html,
+            // but DOMContentLoaded will fire after scripts are parsed/executed)
+            const modalModal = new bootstrap.Modal(document.getElementById('modalModal'));
+            const enterBtn = document.getElementById('actionBtn');
+
+            // Expose modal show function globally
+            window.showmodalModal = function () {
+                const modalEl = document.getElementById('modalModal');
+                if (!modalEl) {
+                    console.error('Modal element not found');
+                    return;
+                }
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+            }
+
+            // Validate form
+            function validateForm() {
+                let form = document.getElementById('actionBtn');
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return false;
+                }
+
+                // Validate date format
+                let dateInput = $('#beginningDate').val();
+                let datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+                if (!datePattern.test(dateInput)) {
+                    alert('Please enter date in mm/dd/yyyy format');
+                    return false;
+                }
+
+                return true;
+            }
+
+            // Submit Insert Entry
+            function submitNewPayrollEntry() {
+                let formData = {
+                    employee_id: $('#employeeSelect').val(),
+                    employee_name: $('#employeeSelect option:selected').text(),
+                    beginning_date: $('#beginningDate').val(),
+                    route: $('#routeSelect').val(),
+                    special_equipment: $('#specialEquipment').is(':checked')
+                };
+
+                // submit formData as update package
+
+
+                console.log('New Entry:', formData);
+
+                // Unblur the header subtitle and table
+                $('.header-subtitle').removeClass('initial-blur');
+                $('.payroll-table').removeClass('initial-blur');
+
+                // Close the modal
+                modalModal.hide();
+
+                // Reload the page to filter table by selected data
+                location.reload();
+            }
+
+            // Load New Entry defaults
+            function loadEntryDefaults () {
+                return null;
+            }
+
+        // Attach click event to the button instead of form submit
+            enterBtn.addEventListener('click', async function (e) {
+                e.preventDefault(); // Prevent default submit
+                const form = document.querySelector('#modalModal form');
+                if (!form) return;
+                if (validateForm()) {
+                    submitNewPayrollEntry();
+                }
+            });
+        });
+    })();
+
+</script>
+<!-- Payroll Selection Modal -->
+<div class="modal fade" id="payrollSelectionModal" tabindex="-1" aria-labelledby="payrollSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="payrollSelectionModalLabel">Payroll Selection</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <form id="payrollSelectionForm">
+                    <!-- Employee Dropdown -->
+                    <div class="mb-3">
+                        <label for="employeeSelect" class="form-label">Employee:</label>
+                        <select class="form-select" id="employeeSelect" name="employee" required>
+                            <option value="">Select Employee...</option>
+                            <!-- Options will be populated dynamically from HR.Employee where employed=True -->
+                        </select>
+                    </div>
+
+                    <!-- Beginning Date -->
+                    <div class="mb-3">
+                        <label for="beginningDate" class="form-label">Beginning Date:</label>
+                        <input type="text" class="form-control" id="beginningDate" name="beginning_date"
+                               placeholder="mm/dd/yyyy" pattern="\d{2}/\d{2}/\d{4}" required>
+                    </div>
+
+                    <!-- Route Dropdown -->
+                    <div class="mb-3">
+                        <label for="routeSelect" class="form-label">Route:</label>
+                        <select class="form-select" id="routeSelect" name="route" required>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                            <option value="F">F</option>
+                            <option value="G">G</option>
+                            <option value="H">H</option>
+                            <option value="I">I</option>
+                            <option value="J">J</option>
+                            <option value="K">K</option>
+                            <option value="L">L</option>
+                            <option value="M">M</option>
+                            <option value="N">N</option>
+                            <option value="O">O</option>
+                            <option value="P">P</option>
+                            <option value="Q">Q</option>
+                            <option value="R">R</option>
+                            <option value="S">S</option>
+                            <option value="T">T</option>
+                            <option value="U">U</option>
+                            <option value="V">V</option>
+                            <option value="W">W</option>
+                            <option value="X">X</option>
+                            <option value="Y">Y</option>
+                            <option value="Z" selected>Z</option>
+                        </select>
+                    </div>
+
+                    <!-- Special Equipment Checkbox -->
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="specialEquipment" name="special_equipment">
+                        <label class="form-check-label" for="specialEquipment">
+                            Special Equipment
+                        </label>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-primary mx-auto" id="btnEnterPayroll">Enter Payroll</button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Exit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Payroll Selection Form functionality
+    (function () {
+        var payrollSelectionModal = null;
+
+        // Initialize modal when DOM is ready
+        document.addEventListener('DOMContentLoaded', function () {
+            // Use jQuery inside the DOMContentLoaded handler (jQuery script is included later in base.html,
+            // but DOMContentLoaded will fire after scripts are parsed/executed)
+            payrollSelectionModal = new bootstrap.Modal(document.getElementById('payrollSelectionModal'));
+
+            // Load employees from HR.Employee where employed=True
+            loadActiveEmployees();
+
+            // Load PSelect data to set defaults
+            loadPSelectDefaults();
+
+            // Handle Enter Payroll button click
+            $('#btnEnterPayroll').on('click', function () {
+                if (validateForm()) {
+                    submitPayrollSelection();
+                }
+            });
+        });
+
+        // Load active employees from HR
+        function loadActiveEmployees() {
+            // TODO: Make AJAX call to get employees where employed=True
+            // For now, this is a placeholder
+            $.ajax({
+                url: '/hr/api/active-employees/', // You'll need to create this endpoint
+                method: 'GET',
+                success: function (data) {
+                    var $select = $('#employeeSelect');
+                    $select.empty();
+                    $select.append('<option value="">Select Employee...</option>');
+                    data.forEach(function (emp) {
+                        $select.append('<option value="' + emp.id + '">' + emp.id + ' - ' + emp.name + '</option>');
+                    });
+                }
+            });
+        }
+
+        // Load PSelect record to set default values
+        function loadPSelectDefaults() {
+            // TODO: Make AJAX call to get latest PSelect record
+            // For now, this is a placeholder
+            $.ajax({
+                url: '/accounting/api/latest-pselect/',  // You'll need to create this endpoint
+                method: 'GET',
+                success: function (data) {
+                    if (data) {
+                        // Set employee
+                        if (data.emp_id) {
+                            $('#employeeSelect').val(data.emp_id);
+                        }
+
+                        // Set beginning date (oldstart)
+                        if (data.oldstart) {
+                            var date = new Date(data.oldstart);
+                            var formatted = ('0' + (date.getMonth() + 1)).slice(-2) + '/' +
+                                ('0' + date.getDate()).slice(-2) + '/' +
+                                date.getFullYear();
+                            $('#beginningDate').val(formatted);
+                        }
+
+                        // Set route (default to Z if not specified)
+                        $('#routeSelect').val(data.route || 'Z');
+
+                        // Set special equipment
+                        $('#specialEquipment').prop('checked', data.spec_equip || false);
+                    }
+                },
+                error: function () {
+                    console.error('Failed to load PSelect defaults');
+                    // Set default values
+                    $('#routeSelect').val('Z');
+                    $('#specialEquipment').prop('checked', false);
+                }
+            });
+        }
+
+        // Validate form
+        function validateForm() {
+            var form = document.getElementById('payrollSelectionForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return false;
+            }
+
+            // Validate date format
+            var dateInput = $('#beginningDate').val();
+            var datePattern = /^\d{2}\/\d{2}\/\d{4}$/;
+            if (!datePattern.test(dateInput)) {
+                alert('Please enter date in mm/dd/yyyy format');
+                return false;
+            }
+
+            return true;
+        }
+
+        // Submit payroll selection
+        function submitPayrollSelection() {
+            var formData = {
+                employee_id: $('#employeeSelect').val(),
+                employee_name: $('#employeeSelect option:selected').text(),
+                beginning_date: $('#beginningDate').val(),
+                route: $('#routeSelect').val(),
+                special_equipment: $('#specialEquipment').is(':checked')
+            };
+
+            console.log('Payroll Selection:', formData);
+
+            // Update the page header with new selection
+            if (window.setPSelectData) {
+                var empName = formData.employee_name.split(' - ')[1] || formData.employee_name;
+                window.setPSelectData(
+                    formData.employee_id,
+                    empName,
+                    formData.beginning_date,
+                    formData.beginning_date,  // You may want to calculate end date
+                    formData.route,
+                    formData.special_equipment
+                );
+            }
+
+            // Unblur the header subtitle and table
+            $('.header-subtitle').removeClass('initial-blur');
+            $('.payroll-table').removeClass('initial-blur');
+
+            // Close the modal
+            payrollSelectionModal.hide();
+
+            // Reload the page to filter table by selected data
+            location.reload();
+        }
+
+        // Expose function to show modal
+        window.showPayrollSelectionModal = function () {
+            loadPSelectDefaults();  // Refresh defaults each time modal is shown
+            payrollSelectionModal.show();
+        };
+
+        // Handle Exit button - unblur but keep current values
+        $('#payrollSelectionModal').on('hidden.bs.modal', function (e) {
+            // Check if modal was closed via Exit button (not Enter Payroll)
+            // Unblur the header subtitle and table
+            $('.header-subtitle').removeClass('initial-blur');
+            $('.payroll-table').removeClass('initial-blur');
+        });
+    })();
+
+</script>

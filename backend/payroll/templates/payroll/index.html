@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<!-- File: `payroll/templates/payroll/index.html` -->
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block extra_head %}
+<!-- DataTables Bootstrap5 skin -->
+<link href="{% static 'vendor/datatables.net-bs5/css/dataTables.bootstrap5.min.css' %}" rel="stylesheet"/>
+<!-- DataTables Buttons skin -->
+<link href="{% static 'vendor/datatables.net-buttons-bs5/css/buttons.bootstrap5.min.css' %}" rel="stylesheet"/>
+<style>
+
+
+    /* compact DoneBy layout: current value and select inline and flexible */
+    .doneby-cell {
+        display: flex;
+        align-items: flex-start; /* align cell content to the top */
+        padding: 0.15rem 0.25rem;
+    }
+
+    .doneby-wrapper {
+        display: flex;
+        flex-direction: row; /* inline */
+        align-items: center;
+        gap: 0.25rem; /* slightly tighter gap */
+        width: 100%;
+        min-width: 0; /* allow shrink in tight cells */
+    }
+
+    .doneby-current {
+        flex: 0 0 auto; /* keep intrinsic width */
+        margin: 0;
+        color: #333;
+        line-height: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        opacity: 0.9;
+        /* reserve space so the label won't push or shrink the select */
+        max-width: calc(100% - 9rem - 0.35rem);
+    }
+
+    /* Make every DoneBy select exactly the same width and align it to the right */
+    .doneby-select,
+    .comment-select {
+        flex: 0 0 9rem; /* fixed equal width */
+        width: 9rem;
+        min-width: 9rem;
+        box-sizing: border-box;
+        margin-left: auto; /* push select to the right edge of the cell */
+    }
+
+    /* keep compact select sizing */
+    .doneby-select.form-select-sm,
+    .comment-select.form-select-sm {
+        padding: 0.12rem 0.3rem;
+        font-size: 11px;
+        line-height: 1;
+    }
+
+    /* Header helpers to mirror the DoneBy cell layout */
+
+    .doneby-current-header {
+        flex: 1 1 auto;
+        text-align: left;
+        font-size: 0.75rem;
+        color: #444;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: calc(100% - 9rem - 0.35rem);
+    }
+
+    .doneby-assign-header {
+        flex: 0 0 9rem;
+        width: 9rem;
+        min-width: 9rem;
+        text-align: right; /* explicitly align Assign to the right edge */
+        font-size: 0.75rem;
+        color: #444;
+    }
+
+    .comment-select:focus {
+        border-style: solid !important;
+        border-color: #000 !important;
+        box-shadow: none !important;
+        outline-offset: 0 !important;
+    }
+
+    /* Ensure all table cells align to the top for consistent column layout */
+    .payroll-table th,
+    .payroll-table td {
+        vertical-align: top;
+    }
+
+    /* Tighten header cell bottom padding so the header sub-row sits closer to the first data row */
+    .table-scroll thead th {
+        padding-bottom: 0.18rem;
+    }
+
+    /* Make dropdown arrows bigger for the new buttons */
+    .btn-group.dropup .dropdown-toggle::after {
+        font-size: 1.7em;
+        margin-left: 0.1em;
+    }
+
+    /* Light blue background for dropup dropdown menus */
+    .btn-group.dropup .dropdown-menu {
+        background-color: #9bddff;
+    }
+
+    /* Ensure tooltips are on top of everything */
+    .tooltip {
+        z-index: 12000 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <input id="pselect-emp-id" type="hidden" value="{{ pselect_data.emp_id }}"/>
+    <input id="pselect-employee-name" type="hidden" value="{{ pselect_data.employee_name }}"/>
+    <input id="pselect-old-start" type="hidden" value='{{ pselect_data.old_start|date:"m/d/Y" }}'/>
+    <input id="pselect-old-end" type="hidden" value='{{ pselect_data.old_end|date:"m/d/Y" }}'/>
+    <input id="pselect-route" type="hidden" value="{{ pselect_data.route }}"/>
+    <input id="pselect-special-equipment" type="hidden" value="{{ pselect_data.special_equipment }}"/>
+    <input id="pselect-commrate" type="hidden" value="{{ pselect_data.commrate }}"/>
+
+    <!-- Page Header -->
+    <div class="row bg-primary text-white align-items-center">
+        <div class="col-6 p-2 text-start d-flex flex-column align-items-start">
+            <h4 class="mb-0 fw-bold">Payroll</h4>
+            <div class="text-white-50" style="font-size:0.8rem;">
+                <span id="header-employee">{{ pselect_data.employee_name|title|default:"[Employee]" }} - ({{ pselect_data.emp_id|default:"[Employee ID]" }})</span>
+                -
+                <span id="header-weekof">{% if pselect_data.old_start %}
+                        {{ pselect_data.old_start|date:"m/d/y" }}{% else %}[WeekOf]{% endif %}</span> -
+                <span class="text-white-50" id="header-route">{{ pselect_data.route|default:"Z" }}</span>
+                <span id="load-timer" class="text-white-50"></span>
+            </div>
+        </div>
+        <div class="col-6 p-2 d-flex align-items-center justify-content-end">
+            <div class="export-grid">
+                <div class="export-row">
+                    <button class="btn btn-success export-btn me-1" data-bs-placement="bottom"
+                            data-bs-toggle="tooltip" title="Export to Excel">
+                        <i class="fas fa-file-excel"></i>
+                    </button>
+                    <button class="btn btn-info export-btn" data-bs-placement="bottom" data-bs-toggle="tooltip"
+                            title="Export to PDF">
+                        <i class="fas fa-file-pdf"></i>
+                    </button>
+                </div>
+                <div class="export-row">
+                    <button class="btn btn-secondary export-btn me-1" data-bs-placement="bottom"
+                            data-bs-toggle="tooltip" title="Export to CSV">
+                        <i class="fas fa-file-csv"></i>
+                    </button>
+                    <button class="btn btn-outline-light export-btn" data-bs-placement="bottom"
+                            data-bs-toggle="tooltip" title="Print">
+                        <i class="fas fa-print"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-0 table-row">
+        <div class="table-scroll" role="region" aria-label="Payroll Table">
+            <table class="table table-sm table-bordered table-hover payroll-table">
+                <colgroup>
+                    <col class="d-none" style="width:0;"/>
+                    <col style="width:15%;"/>   <!-- Company -->
+                    <col style="width:20%;"/>   <!-- Description -->
+                    <col style="width:4%;"/>    <!-- Route -->
+                    <col style="width:7%;"/>    <!-- WeekOf -->
+                    <col style="width:5%;"/>    <!-- Cash Paid -->
+                    <col style="width:15%;"/>   <!-- DoneBy -->
+                    <col style="width:6%;"/>    <!-- Work Order -->
+                    <col style="width:28%;"/>   <!-- Comment -->
+                    <col class="d-none" style="width:0;"/> <!-- Temp Deposit Date -->
+                    <col class="d-none" style="width:0;"/> <!-- Site Commission -->
+                    <col class="d-none" style="width:0;"/> <!-- Charge -->
+                    <col class="d-none" style="width:0;"/> <!-- WeekDone -->
+                    <col class="d-none" style="width:0;"/> <!-- Emp_ID -->
+                    <col class="d-none" style="width:0;"/> <!-- Price -->
+                    <col class="d-none" style="width:0;"/> <!-- COD -->
+                    <col class="d-none" style="width:0;"/> <!-- Other Bill -->
+                    <col class="d-none" style="width:0;"/> <!-- Type -->
+                </colgroup>
+                <thead class="sticky-header">
+                <tr>
+                    <th class="d-none">ID</th>
+                    <th class="payroll-th">Company</th>
+                    <th class="payroll-th">Description</th>
+                    <th class="payroll-th">Route</th>
+                    <th class="payroll-th">WeekOf</th>
+                    <th class="payroll-th">Cash Paid</th>
+                    <th class="payroll-th">DoneBy
+                        <hr class="my-1"/>
+                        <div class="d-flex">
+                            <span class="doneby-current-header">Current</span>
+                            <span class="doneby-assign-header">Assign</span>
+                        </div>
+                    </th>
+                    <th class="payroll-th">Work Order</th>
+                    <th class="payroll-th">Comment</th>
+                    <th class="d-none">Temp Deposit Date</th>
+                    <th class="d-none">Site Commission</th>
+                    <th class="d-none">Charge</th>
+                    <th class="d-none">WeekDone</th>
+                    <th class="d-none">Emp ID</th>
+                    <th class="d-none">Price</th>
+                    <th class="d-none">COD</th>
+                    <th class="d-none">Other Bill</th>
+                    <th class="d-none">Type</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for task in tasks %}
+                <tr>
+                    <td class="d-none p-id">{{ task.uid }}</td>
+                    <td class="payroll-td p-company">{{ task.company }}</td>
+                    <td class="payroll-td p-description" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+                        {{ task.description }}
+                    </td>
+                    <td class="payroll-td p-route">{{ task.route }}</td>
+                    <td class="payroll-td p-weekof">{{ task.weekof|date:"m/d/Y"|default:'&nbsp' }}</td>
+                    <td class="payroll-td p-cash-paid">{% if task.cash_paid %}${{ task.cash_paid|floatformat:2|intcomma }}{% endif %}</td>
+
+                    <td class="payroll-td doneby-cell p-doneby">
+                        <div class="doneby-wrapper">
+                            <span class="doneby-current p-doneby-current" style="font-size:14px;">{{ task.done_by|default:'&nbsp' }}</span>
+                            <select class="form-select form-select-sm doneby-select" aria-label="Done By">
+                                <option value=""></option>
+                                <option value="{{ pselect_data.emp_id }}">{{ pselect_data.employee_name }}</option>
+                                <option value="CANCELLED">CANCELLED</option>
+                                <option value="NOT DONE">NOT DONE</option>
+                            </select>
+                        </div>
+                    </td>
+
+                    <td class="payroll-td">
+                        <input class="form-control form-control-sm workorder-text p-work-order" type="text"
+                               value="{{ task.work_order|default:'' }}"/>
+                    </td>
+                    <td class="payroll-td p-comment">
+                        <select class="form-select form-select-sm comment-select">
+                            <option value=""></option>
+                            {% for comment in comment_options %}
+                            <option value="{{ comment }}"
+                                    {% if task.comment == comment %}selected{% endif %}>{{ comment }}
+                            </option>
+                            {% endfor %}
+                            <option value=""
+                                    {% if not task.comment or task.comment == "None" %}selected{% endif %}>
+                            </option>
+                        </select>
+                    </td>
+                    <td class="d-none p-temp-deposit-date">{{ task.temp_deposit_date|date:"m/d/Y" }}</td>
+                    <td class="d-none p-site-commission">{{ task.site_comm }}</td>
+                    <td class="d-none p-charge">{{ task.charge }}</td>
+                    <td class="d-none p-weekdone">{{ task.weekdone|date:"m/d/Y" }}</td>
+                    <td class="d-none p-emp-id">{{ task.emp_id }}</td>
+                    <td class="d-none p-price">{{ task.price }}</td>
+                    <td class="d-none p-cod">{{ task.cod }}</td>
+                    <td class="d-none p-other-bill">{{ task.other_bill }}</td>
+                    <td class="d-none p-type">{{ task.type }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center">No tasks found.</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row g-0 page-footer">
+        <div class="d-flex justify-content-between align-items-center" style="margin-bottom:8px; margin-top: 2px;">
+            <div>
+                <button id="btn-insert-entry" class="btn btn-primary btn-sm me-1 payroll-button" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="Add a new entry to the payroll table." data-bs-delay='{"show": 1000, "hide": 0}'>Insert Entry
+                </button>
+                <button id="btn-comment" class="btn btn-primary btn-sm me-1 payroll-button" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="Add or edit comments for payroll entries." data-bs-delay='{"show": 1000, "hide": 0}'>Comment
+                </button>
+                <button id="btn-commission-rate" class="btn btn-primary btn-sm me-1 payroll-button" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="Set or view commission rates for employees." data-bs-delay='{"show": 1000, "hide": 0}'>Commission Rate
+                </button>
+                <button id="btn-change-employee" class="btn btn-primary btn-sm me-1 payroll-button" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="Switch to a different employee's payroll view." data-bs-delay='{"show": 1000, "hide": 0}'>Change Employee
+                </button>
+                <button id="btn-deposit" class="btn btn-primary btn-sm me-1 payroll-button" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="Manage deposit information for payroll." data-bs-delay='{"show": 1000, "hide": 0}'>Deposit
+                </button>
+                <button id="btn-view-report" class="btn btn-primary btn-sm me-1 payroll-button" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="Generate and view payroll reports." data-bs-delay='{"show": 1000, "hide": 0}'>View Report
+                </button>
+                <button id="btn-clear-all" class="btn btn-primary btn-sm me-1 payroll-button" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="Clear all entries from the payroll table." data-bs-delay='{"show": 1000, "hide": 0}'>Clear All
+                </button>
+                <button id="btn-fill-all" class="btn btn-primary btn-sm me-1 payroll-button" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="Auto-fill all applicable fields in the payroll table." data-bs-delay='{"show": 1000, "hide": 0}'>Fill All
+                </button>
+
+                <!-- Print Not Done button -->
+                <div class="btn-group dropup me-1">
+                    <button id="btn-print-not-done" class="btn btn-primary btn-sm payroll-button dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        Print NOT DONE
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item d-flex justify-content-between align-items-center" href="#" data-bs-toggle="tooltip"
+                               data-bs-placement="right" title="This option excludes the price from the print operation."
+                               data-bs-delay='{"show": 1000, "hide": 0}'><span>Exclude Price</span></a></li>
+                        <li><a class="dropdown-item d-flex justify-content-between align-items-center" href="#" data-bs-toggle="tooltip"
+                               data-bs-placement="right" title="This option includes the price in the print operation."
+                               data-bs-delay='{"show": 1000, "hide": 0}'><span>Include Price</span></a></li>
+                    </ul>
+                </div>
+
+                <!-- Clear Not Done button -->
+                <div id="btn-clear-not-done" class="btn-group dropup me-1">
+                    <button class="btn btn-primary btn-sm payroll-button dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        Clear NOT DONE
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item d-flex justify-content-between align-items-center" href="#" data-bs-toggle="tooltip"
+                               data-bs-placement="right" title="This option excludes the route from the clear operation. This will clear All NOT DONE"
+                               data-bs-delay='{"show": 1000, "hide": 0}'><span>Exclude Route</span></a></li>
+                        <li><a class="dropdown-item d-flex justify-content-between align-items-center" href="#" data-bs-toggle="tooltip"
+                               data-bs-placement="right" title="This option includes the route in the clear operation."
+                               data-bs-delay='{"show": 1000, "hide": 0}'><span>Include Route</span></a></li>
+                    </ul>
+                </div>
+            </div>
+            <div>
+                <button id="exit-btn" class="btn btn-danger btn-sm payroll-button" data-bs-toggle="tooltip" data-bs-placement="left"
+                        title="Exit to Dashboard" data-bs-delay='{"show": 1000, "hide": 0}'>Exit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'payroll/popups/popupPayrollSelectionForm.html' %}
+{% include 'payroll/popups/popupInsertEntry.html' %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'payroll/js/type-detection.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const empId = document.getElementById('pselect-emp-id')?.value || '';
+        const empName = document.getElementById('pselect-employee-name')?.value?.trim() || '';
+
+        // Global capturing keydown handler so we intercept arrows before native select behavior.
+        // e=KeyboardEvent
+        function globalWorkOrderCapture(e) {
+            if (e.__payrollHandled) return;
+            const arrowKeys = {'ArrowLeft': 'Left', 'ArrowRight': 'Right', 'Tab': 'Tab', 'Enter': 'Enter', 'Escape': 'Escape'};
+            if (!(e.key in arrowKeys)) return;
+            const active = document.activeElement;
+            if (!active) return;
+
+            // Only intercept if a Work Order input is focused
+            if (active.tagName === 'INPUT' && active.classList.contains('workorder-text')) {
+                // Prevent native select navigation/change
+                e.preventDefault();
+                e.stopPropagation();
+
+                // mark handled so other capture listeners skip
+                e.__payrollHandled = true;
+
+                switch (e.key) {
+                    case 'ArrowLeft':
+                        // Move focus to previous cell's select (DoneBy)
+                    {
+
+                        const tdrL = active.closest('td');
+                        const previousTd = tdrL ? tdrL.previousElementSibling : null;
+                        if (previousTd) {
+                            const sel = previousTd.querySelector('select.doneby-select, select');
+                            if (sel) sel.focus();
+                        }
+                    }
+                        break;
+
+                    case 'ArrowRight':
+                    case 'Tab':
+                    case 'Enter':
+                        // Move focus to next cell's select (Comment) or next input
+                    {
+
+                        const tdrR = active.closest('td');
+                        let nextTd = tdrR ? tdrR.nextElementSibling : null;
+                        while (nextTd) {
+                            // prefer inputs (workorder-like) then selects (comment)
+                            const input = nextTd.querySelector('input.workorder-text, input[type="text"], textarea');
+                            const sel = nextTd.querySelector('select.comment-select, select');
+                            if (input) {
+                                input.focus();
+                                break;
+                            }
+                            if (sel) {
+                                sel.focus();
+                                break;
+                            }
+                            nextTd = nextTd.nextElementSibling;
+                        }
+                    }
+                        break;
+
+                    case 'Escape':
+                        const currentWo = (active.value || '').trim();
+                        const originalWo = (active.dataset.original !== undefined)
+                            ? String(active.dataset.original || '').trim()
+                            : String(active.defaultValue || '').trim();
+
+                        if (currentWo !== originalWo) {
+                            active.value = originalWo;
+                        }
+                        break;
+                }
+            }
+        }
+
+        function globalCommentCapture(e) {
+            if (e.__payrollHandled) return;
+            const arrowKeys = {'ArrowUp': 'Up', 'ArrowDown': 'Down', 'ArrowLeft': 'Left', 'ArrowRight': 'Right', 'Tab': 'Tab', 'Enter': 'Enter', 'Escape': 'Escape'};
+            if (!(e.key in arrowKeys)) return;
+
+            const active = document.activeElement;
+            if (!active) return;
+
+            // Only intercept if a Comment select is focused
+            if (active.tagName === 'SELECT' && active.classList.contains('comment-select')) {
+                // Prevent native select navigation/change and mark handled.
+                e.preventDefault();
+                e.stopPropagation();
+                e.__payrollHandled = true;
+                // Intentionally do not move focus here — comment should not steal navigation.
+
+                switch (e.key) {
+                    case 'ArrowLeft':
+                        // Move focus to previous cell's select (DoneBy)
+                    {
+                        const currentComment = String(active.value || '').trim();
+                        const originalComment = (active.dataset.original !== undefined)
+                            ? String(active.dataset.original || '').trim()
+                            : String(active.defaultValue || '').trim();
+
+                        if (currentComment !== originalComment) {
+                            const row = active.closest('tr');
+                            const id = Number.parseInt(row.querySelector('.p-id')?.textContent.trim() || '0');
+                            if (id) {
+                                UpdateComment(id, currentComment);
+                                active.dataset.original = currentComment;
+                            }
+                        }
+                        const tdrL = active.closest('td');
+                        const previousTd = tdrL ? tdrL.previousElementSibling : null;
+                        if (previousTd) {
+                            const sel = previousTd.querySelector('input, input');
+                            if (sel) sel.focus();
+                        }
+                    }
+                        break;
+                    case 'ArrowRight':
+                    case 'Tab':
+                    case 'Enter':
+                        // save Comment change before moving focus to next row's DoneBy select
+                        // We're at the last element in the row — move to the next record's DoneBy select
+                    {
+                        const tr = active.closest('tr');
+                        if (tr) {
+                            let nextTr = tr.nextElementSibling;
+                            while (nextTr) {
+                                const nextDoneBy = nextTr.querySelector('.doneby-select');
+                                if (nextDoneBy) {
+                                    nextDoneBy.focus();
+                                    break;
+                                }
+                                nextTr = nextTr.nextElementSibling;
+                            }
+                        }
+                    }
+                        break;
+
+                    case 'Escape':
+                        const currentComment = String(active.value || '').trim();
+                        const originalComment = (active.dataset.original !== undefined)
+                            ? String(active.dataset.original || '').trim()
+                            : String(active.defaultValue || '').trim();
+
+                        if (currentComment !== originalComment) {
+                            const row = active.closest('tr');
+                            const id = Number.parseInt(row.querySelector('.p-id')?.textContent.trim() || '0');
+                            if (id) {
+                                active.value = originalComment;
+                            }
+                        }
+                        break;
+                }
+
+            }
+        }
+
+        function globalDonebyKeydownCapture(e) {
+            if (e.__payrollHandled) return;
+            const arrowKeys = {'ArrowUp': 'Up', 'ArrowDown': 'Down', 'ArrowLeft': 'Left', 'ArrowRight': 'Right', 'Escape': 'Escape'};
+            if (!(e.key in arrowKeys)) return;
+
+            const active = document.activeElement;
+            if (!active) return;
+
+            // Only intercept if a DoneBy select is focused
+            if (active.tagName === 'SELECT' && active.classList.contains('doneby-select')) {
+                // Prevent native select navigation/change
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Mark this event handled so other capture listeners won't act on it
+                e.__payrollHandled = true;
+
+                switch (e.key) {
+                    case 'Escape':
+                        // Make the select box select the first option (blank)
+                        active.selectedIndex = 0;
+                        const focusDisplay = _valueToDisplayText(active, active.value);
+                        sessionStorage.setItem("DoneByFocusValue", focusDisplay);
+                        sessionStorage.setItem("DoneByChangedValue", "");
+                        sessionStorage.setItem("DoneByWasChanged", "false");
+                        break;
+
+                    case 'ArrowUp': {
+                        const tdUp = active.closest('td');
+                        const trUp = tdUp ? tdUp.closest('tr') : null;
+                        if (trUp) {
+                            const previousTr = trUp.previousElementSibling;
+                            if (previousTr) {
+                                const previousDoneBySelect = previousTr.querySelector('.doneby-select');
+                                if (previousDoneBySelect) previousDoneBySelect.focus();
+                            }
+                        }
+                    }
+                        break;
+
+                    case 'ArrowLeft': {
+                        const tdl = active.closest('td');
+                        const currentSpan = tdl ? tdl.querySelector('.doneby-current') : null;
+                        const currentText = currentSpan ? currentSpan.textContent.trim() : '';
+                        const second = getSecondOption(active);
+                        const selectDoneBy = second ? second.text : '';
+
+                        // console.log('PRE: Current DoneBy text:', currentText, '\nPRE: Select second option text:', selectDoneBy);
+
+                        if ((currentText === '' || currentText === 'CANCELLED' || currentText === 'NOT DONE') || (currentText === selectDoneBy)) {
+                            const currentIndex = active.selectedIndex;
+                            const maxIndex = active.options.length - 1;
+                            // console.log('INNER: Current DoneBy text:', currentText, '\nINNER Select second option text:', selectDoneBy);
+                            if (currentIndex <= maxIndex - 1) {
+                                active.selectedIndex = currentIndex + 1;
+                                active.dispatchEvent(new Event('change', {bubbles: true}));
+                            } else {
+                                active.selectedIndex = 0;
+                                active.dispatchEvent(new Event('change', {bubbles: true}));
+                            }
+                        }
+                    }
+                        break;
+
+                    case 'ArrowDown': {
+                        const tdDown = active.closest('td');
+                        const tr = tdDown ? tdDown.closest('tr') : null;
+                        if (tr) {
+                            let nextTr = tr.nextElementSibling;
+                            while (nextTr) {
+                                const nextSelect = nextTr.querySelector('.doneby-select');
+                                if (nextSelect) {
+                                    nextSelect.focus();
+                                    break;
+                                }
+                                nextTr = nextTr.nextElementSibling;
+                            }
+                        }
+                    }
+                        break;
+
+                    case 'ArrowRight': {
+                        // Move focus to the next cell that contains an input (walk forward)
+                        const tdr = active.closest('td');
+                        let nextTd = tdr ? tdr.nextElementSibling : null;
+                        while (nextTd) {
+                            // Prefer the explicit work order input, then fall back to any input/textarea, then selects (comment)
+                            const workorderInput = nextTd.querySelector('input.workorder-text');
+                            const anyInput = nextTd.querySelector('input[type="text"], textarea');
+                            const commentSelect = nextTd.querySelector('select.comment-select, select');
+                            const input = workorderInput || anyInput;
+                            if (input) {
+                                input.focus();
+                                break;
+                            }
+                            if (commentSelect) {
+                                commentSelect.focus();
+                                break;
+                            }
+                            nextTd = nextTd.nextElementSibling;
+                        }
+                    }
+                        break;
+                }
+            }
+        }
+
+        function _norm(s) {
+            return (s || '').replace(/\u00A0/g, ' ').trim();
+        }
+
+        function _valueToDisplayText(selectEl, val) {
+            // prefer option text for the given value; fallback to the visible .doneby-current span
+            const opt = Array.from(selectEl.options).find(o => o.value === val);
+            if (opt) return _norm(opt.text || opt.textContent || opt.innerText);
+            const td = selectEl.closest('td');
+            const spanText = td ? td.querySelector('.doneby-current')?.textContent : '';
+            return _norm(spanText);
+        }
+
+        // Function for DoneBy lost focus
+        function DoneByFocus(selectEl) {
+            // store the visible/display text at focus time; clear changed marker
+            const display = _valueToDisplayText(selectEl, selectEl.value);
+            sessionStorage.setItem("DoneByFocusValue", display);
+            sessionStorage.setItem("DoneByChangedValue", "");
+            sessionStorage.setItem("DoneByWasChanged", "false");
+        }
+
+        // Function for DoneBy change
+        function DoneByChange(selectEl) {
+            // store the display text for the newly selected option (do not overwrite focus value)
+            const display = _valueToDisplayText(selectEl, selectEl.value);
+            sessionStorage.setItem("DoneByChangedValue", display);
+            sessionStorage.setItem("DoneByWasChanged", "true");
+        }
+
+        // Function for DoneBy lost focus
+        function DoneByLostFocus(selectEl) {
+            const focusedValue = sessionStorage.getItem("DoneByFocusValue") || "";
+            const changedValue = sessionStorage.getItem("DoneByChangedValue") || "";
+            let wasChanged = sessionStorage.getItem("DoneByWasChanged") || "false";
+
+            // If nothing changed, skip
+            // if (focusedValue === changedValue || wasChanged === "false") {
+            //     return;
+            // }
+            if (wasChanged === "false") {
+                return;
+            }
+
+            // meaningful change — gather row data (read inputs/selects correctly)
+            const row = selectEl.closest('tr');
+            if (!row) return;
+
+            // Table Values
+            const id = Number.parseInt(row.querySelector('.p-id')?.textContent.trim() || '0');
+            const company = row.querySelector('.p-company')?.textContent.trim() || '';
+            const description = row.querySelector('.p-description')?.textContent.trim() || '';
+            const route = row.querySelector('.p-route')?.textContent.trim() || '';
+            const weekof = row.querySelector('.p-weekof')?.textContent.trim() || '';
+            let weekdone = row.querySelector('.p-weekdone')?.textContent.trim() || '';
+            let cash_paid = Number.parseFloat(row.querySelector('.p-cash-paid')?.textContent.trim() || '').toFixed(2);
+            const doneby_current = _norm(row.querySelector('.doneby-current')?.textContent || '');
+            const doneby_assigned = changedValue; // already stored as display text
+            const work_order = row.querySelector('input.workorder-text')?.value.trim() || '';
+            const comment = row.querySelector('.p-comment select.comment-select')?.value || '';
+            let temp_deposit_date = row.querySelector('.p-temp-deposit-date')?.textContent.trim() || '';
+            const site_commission = row.querySelector('.p-site-commission')?.textContent.trim() || 'false';
+            const charge = Number.parseFloat(row.querySelector('.p-charge')?.textContent.trim() || '0').toFixed(2);
+            const price = Number.parseFloat(row.querySelector('.p-price')?.textContent.trim() || '0').toFixed(2);
+
+            // Employee ID needs fixen
+            let emp_id = Number.parseInt(document.getElementById('pselect-emp-id')?.value.trim() || '');
+
+            const cod = row.querySelector('.p-cod')?.textContent.trim() || 'false';
+            const other_bill = row.querySelector('.p-other-bill')?.textContent.trim() || 'false';
+            const type = row.querySelector('.p-type')?.textContent.trim() || '';
+
+            // Additional hidden inputs
+            const employeeCommissionRate = Number.parseFloat(
+                document.getElementById('pselect-commrate')?.value || '0.35'
+            ).toFixed(2);
+            const commission = (
+                (100 * (employeeCommissionRate * charge + 0.00501)) / 100
+            ).toFixed(2);
+            const old_start = document.getElementById('pselect-old-start')?.value.trim() || '';
+            const old_end = document.getElementById('pselect-old-end')?.value.trim() || '';
+
+            let update_package = {};
+
+            if (doneby_assigned === "" || doneby_assigned === "NOT DONE") {
+                emp_id = null;
+                cash_paid = null;
+                temp_deposit_date = null;
+                update_package['emp_id'] = null;
+                update_package['cash_paid'] = null;
+                update_package['temp_deposit_date'] = null;
+                update_package['done_by'] = null;
+                if (weekof < weekdone) {
+                    weekdone = weekof;
+                    update_package['weekdone'] = weekdone;
+                }
+
+            } else {
+                if (old_start !== "" && weekdone !== old_start) {
+                    weekdone = old_start;
+                    update_package['weekdone'] = weekdone;
+                }
+
+                if (doneby_assigned === "CANCELLED") {
+                    cash_paid = null;
+                    temp_deposit_date = null;
+                    update_package['cash_paid'] = null;
+                    update_package['temp_deposit_date'] = null;
+                    update_package['done_by'] = doneby_assigned;
+                } else {
+                    // Regular DoneBy assignment
+                    if ((price !== "" && price > 0 && cod === "True") || (other_bill === "True" && type !== "WINDOWS")) {
+                        // Get amount Cash Paid and Projected Deposit Date
+                        let continueLoop = true;
+                        while (continueLoop) {
+                            cash_paid = window.prompt("Enter Cash Paid:");
+                            temp_deposit_date = window.prompt("Enter Temp Deposit Date (MM/DD/YYYY):");
+                            if ((cash_paid === null || cash_paid === "") && (temp_deposit_date === null || temp_deposit_date === "")) {
+                                // User cancelled the prompt or left both blank
+                                // Clear update package and exit loop
+                                Object.keys(update_package).forEach(k => delete update_package[k]);
+                                sessionStorage.setItem('DoneByFocusValue', '');                               // Reset the select back to the first option
+                                if (selectEl && typeof selectEl.selectedIndex === 'number') {
+                                    selectEl.selectedIndex = 0;
+                                }
+                                sessionStorage.setItem('DoneByChangedValue', '');
+                                sessionStorage.setItem('DoneByWasChanged', 'false');
+                                continueLoop = false;
+                            } else {
+                                if ((detectType(cash_paid) === "float-string" || detectType(cash_paid) === "integer-string") && (detectType(temp_deposit_date) === "date-string")) {
+                                    // User provided valid inputs, update package
+                                    update_package['cash_paid'] = cash_paid;
+                                    update_package['temp_deposit_date'] = temp_deposit_date;
+                                    update_package['emp_id'] = emp_id;
+                                    update_package['done_by'] = doneby_assigned;
+                                    continueLoop = false;
+                                }
+                            }
+                        }
+                    } else {
+                        update_package['emp_id'] = emp_id;
+                        update_package['done_by'] = doneby_assigned;
+                    }
+                }
+            }
+
+
+            //call endpoint to update the MonthlyInvoice record with the new values
+            if (Object.keys(update_package).length > 0) {
+                (async function () {
+                    const url = '/accounting/monthly-invoice/' + id + '/edit/';
+                    const requestInfo = {
+                        url,
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                        bodyPreview: JSON.stringify(update_package).slice(0, 2000) // truncated for logs
+                    };
+
+                    try {
+
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                            body: JSON.stringify(update_package)
+                        });
+
+                        const result = {
+                            ok: !!response.ok,
+                            status: response.status,
+                            statusText: response.statusText,
+                            url: response.url || url,
+                            request: requestInfo,
+                            body: null,
+                            parsedJson: null,
+                            error: null,
+                            cause: null
+                        };
+
+                        // Try to read body as text then parse as JSON if possible
+                        result.body = await response.text().catch(e => {
+                            result.error = 'Failed reading body. MonthlyInvoice update failed.';
+                            result.cause = e && e.message ? e.message : String(e);
+                            return null;
+                        });
+
+                        if (result.body) {
+                            try {
+                                result.parsedJson = JSON.parse(result.body);
+                            } catch (parseErr) {
+                                result.error = result.error || 'Invalid JSON. MonthlyInvoice update failed.';
+                                result.cuase = parseErr && parseErr.message ? parseErr.message : String(parseErr);
+                            }
+                        }
+
+                        if (!response.ok) {
+                            console.error('MonthlyInvoice update failed.:', result);
+                            if (typeof showToast === 'function') {
+                                showToast('MonthlyInvoice update failed: ' + response.status + ' ' + response.statusText);
+                            }
+                        }
+
+                        // Success (2xx) — prefer server success flag when present, otherwise heuristic
+                        const data = result.parsedJson;
+                        if (data && typeof data === 'object' && typeof data.success !== 'undefined' && !data.success) {
+                            console.error('MonthlyInvoice update failed:', {id, data, result});
+                            if (typeof showToast === 'function') {
+                                showToast('MonthlyInvoice Update failed: ' + (data.error || 'Unknown reason'));
+                            }
+                            return;
+                        }
+
+                        // Determine assigned display (server-provided done_by preferred)
+                        const aassignedDisplay = (data && typeof data.done_by !== 'undefined' && data.done_by !== null)
+                            ? String(data.done_by).trim()
+                            : doneby_assigned;
+
+                        // Update visible Current DoneBy span
+                        const d_current = row.querySelector('.doneby-current');
+                        if (d_current) {
+                            d_current.textContent = aassignedDisplay || '\u00A0';
+                        }
+
+                        // Update visible Current DoneBy span
+                        const d_cash_paid = row.querySelector('.p-cash-paid');
+                        const parsed = Number.parseFloat(cash_paid)
+
+                        // If not a number, clear the ceel else format as currency
+                        if (!Number.isFinite(parsed)) {
+                            d_cash_paid.textContent = '';
+                        } else {
+                            d_cash_paid.textContent = '$' + parsed.toFixed(2);
+                        }
+
+                        // Reset the select back to the first option
+                        if (selectEl && typeof selectEl.selectedIndex === 'number') {
+                            selectEl.selectedIndex = 0;
+                        }
+
+                        // If server returned emp_id, update the emp-id cell
+                        const empTd = row.querySelector('.p-emp-id');
+                        if (empTd) {
+                            empTd.textContent = (data.emp_id === null || data.emp_id === '') ? '' : String(data.emp_id);
+                        }
+
+                        // Clear change tracking in sessionStorage
+                        sessionStorage.setItem('DoneByFocusValue', '');
+                        sessionStorage.setItem('DoneByChangedValue', '');
+                        sessionStorage.setItem('DoneByWasChanged', 'false');
+
+                        // Notify success
+                        if (typeof showToast === 'function') {
+                            showToast('MonthlyInvoice record updated successfully.', 'success', 3000);
+                        }
+                        console.log('MonthlyInvoice updated successfully:', {id, data, result});
+
+                    } catch (err) {
+                        // Network failure or other unexpected error
+                        console.error('Network or unexpected error during update:', err, {
+                                message: err && err.message ? err.message : String(err),
+                                id,
+                                request: requestInfo
+                            }
+                        );
+                        if (typeof showToast === 'function') {
+                            showToast('MonthlyInvoice update failed: ' + (err && err.message ? err.message : String(err)));
+                        }
+                    }
+                })();
+            }
+        }
+
+        const showToast = (opts, type = 'info', timeout = 5000) => {
+            const cfg = typeof opts === 'string' ? {message: opts, type, timeout} : {message: '', type: 'info', timeout: 5000, ...opts};
+            const map = {info: 'info', success: 'success', error: 'danger', warning: 'warning'};
+            const color = map[cfg.type] || 'info';
+            const containerId = 'payroll-toast-container';
+
+            let container = document.getElementById(containerId);
+            if (!container) {
+                container = document.createElement('div');
+                container.id = containerId;
+                container.className = 'position-fixed top-0 end-0 p-3';
+                container.style.zIndex = 12000;
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-bg-${color} border-0`;
+            toast.setAttribute('role', 'status');
+            toast.setAttribute('aria-live', 'polite');
+            toast.setAttribute('aria-atomic', 'true');
+
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body" style="max-width:28rem;word-wrap:break-word;">
+                        ${String(cfg.message)}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            // Initialize and show using Bootstrap Toast API
+            try {
+                const bsToast = new bootstrap.Toast(toast, {delay: Number(cfg.timeout) || 5000});
+                toast.addEventListener('hidden.bs.toast', () => {
+                    // ensure removal to avoid DOM buildup
+                    if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+                    // if container empty remove it
+                    if (container && container.childElementCount === 0 && container.parentNode) container.parentNode.removeChild(container);
+                }, {once: true});
+                bsToast.show();
+                return bsToast;
+            } catch (e) {
+                // Fallback: simple alert if Bootstrap not available
+                console.warn('Bootstrap Toast unavailable, falling back to console/alert.', e);
+                console.log(cfg.type.toUpperCase(), cfg.message);
+                // still remove element we created
+                if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+                return null;
+            }
+        };
+
+        // Update Work Order
+        function UpdateWorkOrder(id, work_order) {
+            //call endpoint to update the MonthlyInvoice record with the new work order
+            (async function () {
+                const url = '/accounting/monthly-invoice/' + id + '/edit/';
+                const update_package = {'work_order': work_order ? work_order : null};
+
+                try {
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                        body: JSON.stringify(update_package)
+                    });
+
+                    if (!response.ok) {
+                        console.error('MonthlyInvoice Work Order update failed:', response.status, response.statusText);
+                        if (typeof showToast === 'function') {
+                            showToast('MonthlyInvoice Work Order update failed: ' + response.status + ' ' + response.statusText);
+                        }
+                        return;
+                    }
+
+                    // Success
+                    if (typeof showToast === 'function') {
+                        showToast('MonthlyInvoice Work Order updated successfully.', 'success', 3000);
+                    }
+                    console.log('MonthlyInvoice Work Order updated successfully:', {id, work_order});
+
+                } catch (err) {
+                    // Network failure or other unexpected error
+                    console.error('Network or unexpected error during Work Order update:', err);
+                    if (typeof showToast === 'function') {
+                        showToast('MonthlyInvoice Work Order update failed: ' + (err && err.message ? err.message : String(err)));
+                    }
+                }
+            })();
+        }
+
+        // Update Comment:
+        function UpdateComment(id, comment) {
+            //call endpoint to update the MonthlyInvoice record with the new comment
+            (async function () {
+                const url = '/accounting/monthly-invoice/' + id + '/edit/';
+                const update_package = {'comment': comment ? comment : null};
+
+                try {
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                        body: JSON.stringify(update_package)
+                    });
+
+                    if (!response.ok) {
+                        console.error('MonthlyInvoice Comment update failed:', response.status, response.statusText);
+                        if (typeof showToast === 'function') {
+                            showToast('MonthlyInvoice Comment update failed: ' + response.status + ' ' + response.statusText);
+                        }
+                        return;
+                    }
+
+                    // Success
+                    if (typeof showToast === 'function') {
+                        showToast('MonthlyInvoice Comment updated successfully.', 'success', 3000);
+                    }
+                    console.log('MonthlyInvoice Comment updated successfully:', {id, comment});
+
+                } catch (err) {
+                    // Network failure or other unexpected error
+                    console.error('Network or unexpected error during Comment update:', err);
+                    if (typeof showToast === 'function') {
+                        showToast('MonthlyInvoice Comment update failed: ' + (err && err.message ? err.message : String(err)));
+                    }
+                }
+            })();
+        }
+
+        // Get the second option of a select element
+        function getSecondOption(selectEl) {
+            const sel = selectEl || document.activeElement;
+            if (!sel || sel.tagName !== 'SELECT') return null;
+            if (sel.options.length <= 1) return null; // no second option
+            const opt = sel.options[1]; // second option (zero-based)
+            return {
+                option: opt,
+                value: opt.value,
+                text: (opt.text || opt.textContent || opt.innerText || '').trim()
+            }
+        }
+
+        // install capturing listener at document level (runs before element handlers)
+        document.addEventListener('keydown', globalDonebyKeydownCapture, true);
+        document.addEventListener('keydown', globalWorkOrderCapture, true);
+        document.addEventListener('keydown', globalCommentCapture, true);
+
+        document.querySelectorAll('.doneby-select').forEach(selectEl => {
+            // Add focus and change event listeners to DoneBy selects
+            selectEl.addEventListener('focus', function () {
+                DoneByFocus(selectEl);
+
+            });
+            selectEl.addEventListener('change', function () {
+                DoneByChange(selectEl);
+            });
+
+            // Add blur event listener to handle DoneBy select losing focus
+            selectEl.addEventListener('blur', function () {
+                DoneByLostFocus(selectEl);
+            });
+        });
+
+        document.querySelectorAll('input.workorder-text').forEach(input => {
+            input.dataset.original = String(input.value || input.defaultValue || '').trim();
+            input.addEventListener('blur', function () {
+                const currentWo = String(input.value || '').trim();
+                const originalWo = (input.dataset.original !== undefined)
+                    ? String(input.dataset.original || '').trim()
+                    : String(input.defaultValue || '').trim();
+                if (currentWo !== originalWo) {
+                    const row = input.closest('tr');
+                    const id = Number.parseInt(row.querySelector('.p-id')?.textContent.trim() || '0');
+                    if (id) {
+                        UpdateWorkOrder(id, currentWo);
+                        input.dataset.original = currentWo;
+                    }
+                }
+            })
+        })
+
+        document.querySelectorAll('select.comment-select').forEach(input => {
+            input.dataset.original = String(input.value || input.defaultValue || '').trim();
+            input.addEventListener('blur', function () {
+                const currentComment = String(input.value || '').trim();
+                const originalComment = (input.dataset.original !== undefined)
+                    ? String(input.dataset.original || '').trim()
+                    : String(input.defaultValue || '').trim();
+                if (currentComment !== originalComment) {
+                    const row = input.closest('tr');
+                    const id = Number.parseInt(row.querySelector('.p-id')?.textContent.trim() || '0');
+                    if (id) {
+                        UpdateComment(id, currentComment);
+                        input.dataset.original = currentComment;
+                    }
+                }
+            })
+        })
+
+        // Provide fallback show function for modal if popup partial didn't expose it
+        if (typeof window.showPayrollSelectionModal !== 'function') {
+            window.showPayrollSelectionModal = function () {
+                const modalEl = document.getElementById('payrollSelectionModal');
+                if (!modalEl) {
+                    console.warn('Payroll modal element not found');
+                    return;
+                }
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            };
+        }
+
+        // Open payroll selection modal when "Change Employee" clicked
+        const btnChange = document.getElementById('btn-change-employee');
+        if (btnChange) {
+            btnChange.addEventListener('click', function (e) {
+                e.preventDefault();
+                try {
+                    window.showPayrollSelectionModal();
+                } catch (err) {
+                    console.error('Failed to open payroll modal:', err);
+                    // fallback attempt
+                    const modalEl = document.getElementById('payrollSelectionModal');
+                    if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                }
+            });
+        }
+
+        const btnInserEntry = document.getElementById('btn-insert-entry');
+        if(btnInserEntry) {
+            btnInserEntry.addEventListener('click', function(e) {
+               e.preventDefault();
+               try {
+                   window.showInsertEntryModal();
+
+               } catch (err) {
+                    console.error('Failed to open New Payroll Entry modal:', err);
+                    // fallback attempt
+                    const modalEl = document.getElementById('insertEntryModal');
+                    if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+               }
+            });
+        }
+
+
+
+        // Show payroll modal on first page load (not on refresh
+        try {
+            const shownKey = 'payrollSelectionShown';
+            if (!sessionStorage.getItem(shownKey)) {
+                // small delay to ensure popup partial initialized
+                setTimeout(() => {
+                    try {
+                        if (typeof window.showPayrollSelectionModal === 'function') {
+                            window.showPayrollSelectionModal();
+                        } else {
+                            const modalEl = document.getElementById('payrollSelectionModal');
+                            if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                        }
+                        sessionStorage.setItem(shownKey, '1');
+                    } catch (err) {
+                        console.warn('Could not auto-open payroll modal:', err);
+                    }
+                }, 200);
+            }
+        } catch (err) {
+            console.warn('Auto-open payroll modal check failed:', err);
+        }
+
+        // Listen for a cancelable preview event and show a confirmation with the filter summary.
+        // If the user cancels the confirm, call e.preventDefault() so the caller can abort applying filters.
+        document.addEventListener('payroll:filter:preview', function (e) {
+            try {
+                const d = e.detail || {};
+                const parts = [];
+                if (d.route_text) parts.push('Route: ' + d.route_text);
+                if (d.week_of_iso) {
+                    try {
+                        const dateStr = new Date(d.week_of_iso + 'T00:00:00').toLocaleDateString();
+                        parts.push('WeekOf: ' + dateStr);
+                    } catch (_) {
+                        parts.push('WeekOf: ' + d.week_of_iso);
+                    }
+                }
+                if (d.employee_name) parts.push('Employee: ' + d.employee_name);
+                if (typeof d.special_equipment !== 'undefined') {
+                    parts.push('SpecialEquip: ' + (d.special_equipment ? 'True' : 'False'));
+                }
+
+                const ok = window.confirm('Apply filters?\n\n' + parts.join(' \u00B7 '));
+                if (!ok) e.preventDefault();
+            } catch (err) {
+                console.warn('Error in payroll:filter:preview handler:', err);
+            }
+        }, false);
+
+        // Focus on first DoneBy select if filters were just applied
+        if (sessionStorage.getItem('justAppliedFilters')) {
+            sessionStorage.removeItem('justAppliedFilters');
+            const firstDoneby = document.querySelector('.doneby-select');
+            if (firstDoneby) {
+                firstDoneby.focus();
+            }
+        }
+
+        // Exit button navigation to home
+        const exitBtn = document.getElementById('exit-btn');
+        if (exitBtn) {
+            exitBtn.addEventListener('click', function () {
+                window.location.href = '/';
+            });
+        }
+
+        // Initialize tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Set load timer
+        const loadTime = performance.now() / 1000;
+        document.getElementById('load-timer').textContent = ` (${loadTime.toFixed(2)}s)`;
+    })
+    ;
+</script>
+{% endblock %}

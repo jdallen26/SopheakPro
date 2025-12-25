@@ -1,0 +1,30 @@
+Endpoint 1:
+
+Path: /api/employees
+Method: GET
+Description: Get a list of all employees
+Parameters:
+department (string, optional) - Filter by department name
+active (boolean, optional) - Filter by active status
+Response Example:
+{
+  "employees": [
+    {"id": 1, "name": "John Smith", "department": "IT"},
+    {"id": 2, "name": "Jane Doe", "department": "HR"}
+  ]
+}
+
+Endpoint 2:
+
+Path: /api/employees/{id}
+Method: POST
+Description: Create a new employee record
+Parameters:
+name (string, required) - Employee full name
+department (string, required) - Department name
+email (string, required) - Employee email
+Request Example:
+{"name": "Bob Wilson", "department": "Sales", "email": "bob@company.com"}
+
+Response Example:
+{"id": 3, "name": "Bob Wilson", "department": "Sales", "created": true}
