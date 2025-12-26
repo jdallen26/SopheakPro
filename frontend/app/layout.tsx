@@ -37,12 +37,12 @@ export default function RootLayout({
                 className="flex-1 overflow-auto"
                 style={{
                   background: 'var(--background)',
-                  padding: '20px',
+                  padding: '5px',
                 }}
               >
                 {children}
               </main>
-              <Footer />
+              {/*<Footer />*/}
             </div>
           </div>
         </ThemeProvider>

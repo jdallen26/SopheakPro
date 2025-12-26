@@ -1,3 +1,4 @@
+/* File: `app/globals.css` */
 @import "tailwindcss";
 @import "tailwindcss/preflight";
 
@@ -7,10 +8,10 @@
     --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --header-height: 50px;
-    --footer-height: 32px;
+    --footer-height: 16px;
     --sidebar-width: 220px;
     --sidebar-collapsed-width: 60px;
-    
+
     --teal: #00acac;
     --teal-dark: #008a8a;
     --teal-light: #33bdbd;
@@ -35,7 +36,6 @@
     --active-text: #00acac;
     --card-bg: #ffffff;
     --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    --header-bg: #ffffff;
 }
 
 .dark {
@@ -117,7 +117,7 @@ body {
 }
 
 .panel-body {
-    padding: 15px;
+    padding: 5px;
 }
 
 .widget {
@@ -231,6 +231,7 @@ hr {
     border-collapse: collapse;
 }
 
+/* KEEP table cells normal for header/footer, enforce compact rows only for tbody */
 .data-table th,
 .data-table td {
     padding: 10px 15px;
@@ -242,8 +243,78 @@ hr {
     background: var(--background-secondary);
     font-weight: 600;
     font-size: 12px;
-    text-transform: uppercase;
     color: var(--foreground-secondary);
+}
+
+/* Fixed compact body rows */
+.data-table tbody tr {
+    height: 12px;
+    max-height: 12px;
+    font-size: 10px;
+}
+.data-table tbody td,
+.data-table tbody th {
+    padding-top: 4px;
+    padding-bottom: 4px;
+    line-height: 8px;
+    height: 8px;
+    max-height: 8px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+
+}
+
+/* keep thead/tfoot unaffected */
+.data-table thead tr,
+.data-table tfoot tr {
+    height: auto;
+    line-height: normal;
+}
+
+.data-table tfoot tr {
+    height: 32px;
+}
+
+.menu-tree, .menu-tree ul, .menu-tree li {
+    position: relative;
+}
+
+.menu-tree ul {
+    padding-left: 24px;
+}
+
+.menu-tree ul::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: var(--sidebar-text);
+    opacity: 0.5;
+}
+
+.menu-tree li::before {
+    content: '';
+    position: absolute;
+    top: 16px;
+    left: -12px;
+    width: 12px;
+    height: 1px;
+    background-color: var(--sidebar-text);
+    opacity: 0.5;
+}
+
+.menu-tree ul > li:last-child::after {
+    content: '';
+    position: absolute;
+    left: -24px;
+    top: 17px;
+    bottom: 0;
+    width: 12px;
+    background: var(--sidebar-menu-bg);
 }
 
 .data-table tbody tr:hover {

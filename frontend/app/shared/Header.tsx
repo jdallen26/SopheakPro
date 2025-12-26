@@ -67,12 +67,12 @@ export default function Header(): React.ReactElement {
             border: '1px solid var(--border-color)',
           }}
         >
-          <Search size={16} style={{ color: 'var(--foreground-muted)' }} />
+          <Search size={16} style={{ color: 'var(--foreground-muted)', marginLeft: '4px' }} />
           <input
             type="search"
-            placeholder="Enter keyword"
+            placeholder="Search"
             className="flex-1 bg-transparent border-none outline-none text-sm"
-            style={{ color: 'var(--foreground)' }}
+            style={{ color: 'var(--foreground)', marginLeft: '-4px' }}
           />
         </div>
       </div>
@@ -164,10 +164,10 @@ export default function Header(): React.ReactElement {
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium cursor-pointer"
             style={{ background: 'var(--teal)', color: 'white' }}
           >
-            AS
+            JA
           </div>
-          <span className="text-sm hidden lg:block" style={{ color: 'var(--foreground)' }}>
-            Adam Schwartz
+          <span className="text-sm hidden lg:block" style={{ color: 'var(--foreground)', paddingRight: '5px'}}>
+            Jay Allen
           </span>
         </div>
       </div>

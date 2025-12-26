@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p 5000",
+    "dev": "next dev -H localhost -p 3000",
     "build": "next build",
-    "start": "next start -H 0.0.0.0 -p 5000",
+    "start": "next start -H localhost -p 3000",
     "lint": "eslint",
-    "dev-cross": "cross-env NODE_OPTIONS=--enable-source-maps next dev -H 0.0.0.0 -p 5000",
-    "start-cross": "cross-env NODE_OPTIONS=--enable-source-maps next start -H 0.0.0.0 -p 5000"
+    "dev-cross": "cross-env NODE_OPTIONS=--enable-source-maps next dev -H localhost -p 3000",
+    "start-cross": "cross-env NODE_OPTIONS=--enable-source-maps next start -H localhost -p 3000"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
@@ -18,7 +18,15 @@
     "next": "16.0.10",
     "next-themes": "^0.4.6",
     "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "react-dom": "19.2.1",
+    "@fullcalendar/core": "^6",
+    "@fullcalendar/react": "^6",
+    "@fullcalendar/daygrid": "^6",
+    "@fullcalendar/interaction": "^6",
+    "@hello-pangea/dnd": "^18.0.1",
+    "next-auth": "^4",
+    "react-apexcharts": "^1",
+    "apexcharts": "^3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -1,295 +1,620 @@
 // typescript
-// File: `app/payroll/processor/TasksClient.tsx`
 'use client'
-import React, { useEffect, useRef, useState, useMemo } from 'react'
-import { normalizeResponse } from './lib/normalizeResponse'
+import React, {useEffect, useRef, useState, useMemo} from 'react'
+import {normalizeResponse} from './lib/normalizeResponse'
 
 interface Task {
-  rec_id: number
-  cust_id: string
-  company: string
-  description: string
-  route: string
-  week_of: string
-  done_by: string
-  word_order: string
-  comment: string
-  charge: string
-  site_commission: string
-  temp_deposit_date: string
-  uid: number
-  week_done: string
-  emp_id: string
-  price: string
-  cod: string
-  other_bill?: string
-  type: string
-  cash_paid?: string
-  [key: string]: unknown
+    rec_id: number
+    cust_id: string
+    company: string
+    description: string
+    route: string
+    week_of: string
+    done_by: string
+    word_order: string
+    comment: string
+    charge: string
+    site_commission: string
+    temp_deposit_date: string
+    uid: number
+    week_done: string
+    emp_id: string
+    price: string
+    cod: string
+    other_bill?: string
+    type: string
+    cash_paid?: string
+
+    [key: string]: unknown
+}
+
+interface PaySelect {
+    uid: number
+    emp_id: number
+    start: string
+    end: string
+    week_done: string
+    old_start: string
+    old_end: string
+    mile_rate: string
+    chk_price_paid: string
+    reim_exp: string
+    otime_percentage: string
+    spec_equip: boolean
+    billing_date: string
+    invoice_num: number
+    route: string
+}
+
+interface Employee {
+    emp_id: number
+    name: string
+    emp_comm_rate: number
 }
 
 type Column = {
-  key: string
-  label: string
-  width?: string
-  stickyLeft?: boolean
-  hidden?: boolean
+    key: string
+    label: string
+    width?: string
+    stickyLeft?: boolean
+    hidden?: boolean
+    responsiveClassName?: string
 }
 
 export default function TasksClient(): React.ReactElement {
-  const [tasks, setTasks] = useState<Task[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const mountedRef = useRef(false)
+    const [tasks, setTasks] = useState<Task[] | null>(null)
+    const [paySelect, setPaySelect] = useState<PaySelect[] | null>(null)
+    const [error, setError] = useState<string | null>(null)
+    const mountedRef = useRef(false)
 
-  useEffect(() => {
-    const ac = new AbortController()
-    mountedRef.current = true
+    useEffect(() => {
+        const ac = new AbortController()
+        mountedRef.current = true
 
-    async function fetchTasks() {
-      try {
-        const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
-        const url = `${API_BASE}/api/v1/payroll/sites/?show_all=1&refresh=1`
-        const res = await fetch(url, { signal: ac.signal, cache: 'no-store' })
+        async function fetchPSelect() {
+            try {
+                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+                const url = `${API_BASE}/api/v1/payroll/pselect`
+                const res = await fetch(url, {signal: ac.signal, cache: 'no-store'})
 
-        console.log('[TasksClient] response meta:', {
-          url: res.url,
-          status: res.status,
-          ok: res.ok,
-          redirected: res.redirected,
-          type: res.type,
-          bodyUsed: res.bodyUsed,
-        })
+                const contentType = res.headers.get('content-type') || ''
+                const text = await res.text()
 
-        for (const [name, value] of res.headers.entries()) {
-          console.log(`[TasksClient] header: ${name}: ${value}`)
-        }
-        const contentType = res.headers.get('content-type') || ''
-        console.log('[TasksClient] content-type header:', contentType)
+                if (!res.ok) {
+                    if (!ac.signal.aborted && mountedRef.current) {
+                        setError(`Fetch failed: ${res.status}`)
+                        setPaySelect([])
+                    }
+                    return
+                }
 
-        try {
-          const preview = await res.clone().text()
-          console.log('[TasksClient] body preview (clone, first 2000 chars):', preview.slice(0, 2000))
-        } catch (cloneErr) {
-          console.warn('[TasksClient] could not read clone body (maybe binary):', cloneErr)
-        }
+                if (!contentType) {
+                    if (!ac.signal.aborted && mountedRef.current) {
+                        setError('Invalid response content type')
+                        setPaySelect([])
+                    }
+                    return
+                }
 
-        const text = await res.text()
 
-        if (!res.ok) {
-          if (!ac.signal.aborted && mountedRef.current) {
-            setError(`Fetch failed: ${res.status}`)
-            setTasks([])
-          }
-          return
-        }
+                let parsed: unknown
+                try {
+                    parsed = JSON.parse(text)
+                } catch (err) {
+                    console.error('[TasksClient] JSON.parse failed, raw body:', text.slice(0, 5000), err)
+                    if (!ac.signal.aborted && mountedRef.current) {
+                        setError('Failed to parse JSON')
+                        setPaySelect([])
+                    }
+                }
 
-        if (!contentType.includes('application/json')) {
-          if (!ac.signal.aborted && mountedRef.current) {
-            setError('Invalid content-type, expected JSON')
-            setTasks([])
-          }
-          console.log('[TasksClient] non-JSON response body (full):', text.slice(0, 5000))
-          return
+                const normalized = normalizeResponse<PaySelect>(parsed)
+                if (!ac.signal.aborted && mountedRef.current) setPaySelect(normalized)
+            } catch {
+                console.log('error')
+            }
         }
 
-        let parsed: unknown
-        try {
-          parsed = JSON.parse(text)
-        } catch (err) {
-          console.error('[TasksClient] JSON.parse failed, raw body:', text.slice(0, 5000), err)
-          if (!ac.signal.aborted && mountedRef.current) {
-            setError('Failed to parse JSON')
-            setTasks([])
-          }
-          return
+        fetchPSelect()
+
+        return () => {
+            mountedRef.current = false
+            ac.abort()
+        }
+    }, [])
+
+    useEffect(() => {
+        if (!paySelect || paySelect.length === 0) {
+            return
         }
 
-        console.log(
-          '[TasksClient] parsed shape:',
-          parsed && typeof parsed === 'object' ? Object.keys(parsed as Record<string, unknown>) : typeof parsed
-        )
+        const ac = new AbortController()
+        mountedRef.current = true
 
-        const normalized = normalizeResponse<Task>(parsed)
-        console.log('[TasksClient] normalized length:', normalized.length)
-        if (!ac.signal.aborted && mountedRef.current) setTasks(normalized)
-      } catch (err: unknown) {
-        const name = (err as { name?: string }).name
-        if (name === 'AbortError') return
-        if (mountedRef.current) setError(String(err))
-      }
-    }
+        async function fetchTasks() {
+            try {
+                const weekDoneRaw = paySelect![0].week_done;
+                const date = new Date(weekDoneRaw);
+                let weekOf: string;
 
-    fetchTasks()
+                if (!isNaN(date.getTime())) {
+                    const year = date.getUTCFullYear();
+                    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                    const day = String(date.getUTCDate()).padStart(2, '0');
+                    weekOf = `${year}-${month}-${day}`;
+                } else {
+                    weekOf = weekDoneRaw;
+                }
 
-    return () => {
-      mountedRef.current = false
-      ac.abort()
-    }
-  }, [])
+                const route = paySelect![0].route;
 
-  // call hooks in the same order on every render (move useMemo before any early returns)
-  const rowKeys = useMemo(() => {
-    if (!tasks) return []
-    return tasks.map((t, i) => String(t.cust_id ?? t.rec_id ?? i))
-  }, [tasks])
+                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+                const url = `${API_BASE}/api/v1/payroll/task_list/?refresh=1&week_of=${weekOf}&route=${route}`
+                //const url = `${API_BASE}/api/v1/payroll/task_list/?refresh=1&route=${route}`
+                const res = await fetch(url, {signal: ac.signal, cache: 'no-store'})
 
-  if (error) return <p className="p-4 text-red-600">Error: {error}</p>
-  if (tasks === null) return <p className="p-4">Loading…</p>
-  if (tasks.length === 0) return <p className="p-4">No payroll tasks found.</p>
+                const contentType = res.headers.get('content-type') || ''
+                const text = await res.text()
 
-  const columns: Column[] = [
-    { key: 'rec_id', label: '', width: '2%', stickyLeft: false, hidden: true },
-    { key: 'cust_id', label: 'CustID', stickyLeft: false, width: '0', hidden: true },
-    { key: 'company', label: 'Company', width: '15%', stickyLeft: false },
-    { key: 'description', label: 'Description', width: '20%', stickyLeft: false },
-    { key: 'route', label: 'Route', width: '2%', stickyLeft: false },
-    { key: 'week_of', label: 'WeekOf', width: '3%', stickyLeft: false },
-    { key: 'cash_paid', label: 'Site Commission', width: '3%', stickyLeft: false },
-    { key: 'done_by', label: 'Done By', width: '5%', stickyLeft: false },
-    { key: 'word_order', label: 'Work Order', width: '10%', stickyLeft: false },
-    { key: 'comment', label: 'Comment', width: '15%', stickyLeft: false },
-    { key: 'charge', label: 'Charge', width: '3%', stickyLeft: false, hidden: true },
-    { key: 'temp_deposit_date', label: 'Temp Dep Date', width: '0', stickyLeft: false, hidden: true },
-    { key: 'uid', label: 'uid', width: '0', stickyLeft: true, hidden: true },
-    { key: 'week_done', label: 'Week Done', width: '0', stickyLeft: false, hidden: true },
-    { key: 'emp_id', label: 'Emp ID', width: '0', stickyLeft: false, hidden: true },
-    { key: 'price', label: 'Price', width: '0', stickyLeft: false, hidden: true },
-    { key: 'cod', label: 'COD', width: '0', stickyLeft: false, hidden: true },
-    { key: 'other_bill', label: 'Other Bill', width: '0', stickyLeft: false, hidden: true },
-    { key: 'type', label: 'Type', width: '0', stickyLeft: false, hidden: true },
-  ]
+                if (!res.ok) {
+                    if (!ac.signal.aborted && mountedRef.current) {
+                        setError(`Fetch failed: ${res.status}`)
+                        setTasks([])
+                    }
+                    return
+                }
 
-  const totalMinWidth = columns.reduce((acc, c) => acc + parseInt(String((c.width ?? '0')).replace('%', ''), 10), 0)
+                if (!contentType.includes('application/json')) {
+                    if (!ac.signal.aborted && mountedRef.current) {
+                        setError('Invalid content-type, expected JSON')
+                        setTasks([])
+                    }
+                    console.log('[TasksClient] non-JSON response body (full):', text.slice(0, 5000))
+                    return
+                }
 
-  return (
-    <div className="w-full h-full min-h-0 table-scroll">
-      <table
-        className="table-auto border-collapse shadow-md rounded-lg"
-        style={{ minWidth: totalMinWidth + 'px', width: '100%', margin: 0 }}
-      >
-        <thead className="sticky-top border-b border-gray-200 bg-gray-200">
-          <tr>
-            {columns.map((col) => (
-              <th
-                key={col.key}
-                className={`px-2 text-left text-sm uppercase tracking-wider border-b ${col.hidden ? 'hidden' : ''}`}
-                style={{
-                  paddingTop: '0px',
-                  position: 'sticky',
-                  top: 'var(--header-height)',
-                  zIndex: col.stickyLeft ? 4 : 2,
-                  left: col.stickyLeft ? 0 : undefined,
-                  minWidth: col.width,
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                  backgroundColor: 'var(--background, white)',
-                }}
-              >
-                <div style={{ maxWidth: `100%` }} title={col.label}>
-                  {col.label}
-                </div>
-              </th>
-            ))}
-          </tr>
-        </thead>
+                let parsed: unknown
+                try {
+                    parsed = JSON.parse(text)
+                } catch (err) {
+                    console.error('[TasksClient] JSON.parse failed, raw body:', text.slice(0, 5000), err)
+                    if (!ac.signal.aborted && mountedRef.current) {
+                        setError('Failed to parse JSON')
+                        setTasks([])
+                    }
+                    return
+                }
 
-        <tbody className="divide-y divide-gray-200">
-          {tasks.map((task, rowIndex) => {
-            const rowKey = rowKeys[rowIndex] ?? String(rowIndex)
-            return (
-              <tr key={rowKey} className="light:hover:bg-gray-200 dark:hover:bg-gray-200">
-                {columns.map((col) => {
-                  const value = (task as Record<string, unknown>)[col.key]
-                  const isBoolean = ['cod', 'mailto', 'taxable', 'voucher', 'other_bill', 'adv_bill', 'in_monthly'].includes(col.key)
-                  const rawValue = col.key === 'cust_id' ? value : col.key === 'company' ? value : value
+                const normalized = normalizeResponse<Task>(parsed)
+                if (!ac.signal.aborted && mountedRef.current) setTasks(normalized)
 
-                  return (
-                    <td
-                      key={col.key}
-                      className={`px-2 py-1 ${col.hidden ? 'hidden' : ''}`}
-                      style={{
-                        minWidth: col.width,
-                        position: col.stickyLeft ? 'sticky' : undefined,
-                        left: col.stickyLeft ? 0 : undefined,
-                        zIndex: col.stickyLeft ? 3 : 0,
-                        borderTop: '1px solid #e5e7eb',
-                        borderRight: '2px solid #e5e7eb',
-                        fontSize: '11px',
-                        background: col.stickyLeft ? 'var(--background, white)' : undefined,
-                      }}
-                    >
-                      <div
-                        style={
-                          isBoolean
-                            ? {
-                                width: '100%',
-                                marginLeft: 0,
-                                paddingLeft: 0,
-                                boxSizing: 'border-box',
-                                maxWidth: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'flex-start',
-                              }
-                            : {
-                                display: 'inline-block',
-                                boxSizing: 'border-box',
-                                marginLeft: 0,
-                                paddingLeft: 0,
-                                maxWidth: 'none',
-                                whiteSpace: 'nowrap',
-                              }
+            } catch (err: unknown) {
+                const name = (err as { name?: string }).name
+                if (name === 'AbortError') return
+                if (mountedRef.current) setError(String(err))
+            }
+        }
+
+        fetchTasks()
+
+        return () => {
+            mountedRef.current = false
+            ac.abort()
+        }
+    }, [paySelect])
+
+
+    // keep hooks order stable — compute row keys before early returns
+    const rowKeys = useMemo(() => {
+        if (!tasks) return []
+        return tasks.map((t, i) => String(t.rec_id ?? i))
+    }, [tasks])
+
+    if (error) return <p className="p-4 text-red-600" style={{paddingLeft: '10px'}}>Error: {error}</p>
+    if (tasks === null) return <p className="p-4" style={{paddingLeft: '10px'}}>Loading…</p>
+    if (tasks.length === 0) return <p className="p-4" style={{paddingLeft: '10px'}}>No payroll tasks found.</p>
+
+    const columns: Column[] = [
+        {key: 'rec_id', label: '', stickyLeft: false, hidden: true},
+        {key: 'cust_id', label: 'CustID', stickyLeft: false, hidden: true},
+        {
+            key: 'company',
+            label: 'Company',
+            width: '18%',
+            stickyLeft: false,
+            responsiveClassName: 'hidden sm:table-cell'
+        },
+        {
+            key: 'description',
+            label: 'Description',
+            width: '18%',
+            stickyLeft: false,
+            responsiveClassName: 'hidden sm:table-cell'
+        },
+        {key: 'route', label: 'Route', width: '5%', stickyLeft: false, responsiveClassName: 'hidden md:table-cell'},
+        {key: 'week_of', label: 'WeekOf', width: '7%', stickyLeft: false, responsiveClassName: 'hidden lg:table-cell'},
+        {
+            key: 'cash_paid',
+            label: 'Cash Paid',
+            width: '6%',
+            stickyLeft: false,
+            responsiveClassName: 'hidden md:table-cell'
+        },
+        {
+            key: 'done_by',
+            label: 'Done By',
+            width: '16%',
+            stickyLeft: false,
+            responsiveClassName: 'hidden sm:table-cell'
+        },
+        {
+            key: 'work_order',
+            label: 'Work Order',
+            width: '10%',
+            stickyLeft: false,
+            responsiveClassName: 'hidden md:table-cell'
+        },
+        {
+            key: 'comment',
+            label: 'Comment',
+            width: '25%',
+            stickyLeft: false,
+            responsiveClassName: 'hidden md:table-cell'
+        },
+        {key: 'charge', label: 'Charge', width: '3%', stickyLeft: false, hidden: true},
+        {
+            key: 'temp_deposit_date',
+            label: 'Temp Dep Date',
+            width: '9%',
+            stickyLeft: false,
+            hidden: true,
+        },
+        {key: 'uid', label: 'UID', width: '0', stickyLeft: false, hidden: true},
+        {key: 'week_done', label: 'Week Done', width: '0', stickyLeft: false, hidden: true},
+        {key: 'emp_id', label: 'EmpID', width: '0', stickyLeft: false, hidden: true},
+        {key: 'price', label: 'Price', width: '0', stickyLeft: false, hidden: true},
+        {key: 'cod', label: 'COD', width: '0', stickyLeft: false, hidden: true},
+        {key: 'other_bill', label: 'Other Bill', width: '0', stickyLeft: false, hidden: true},
+        {key: 'type', label: 'Type', width: '0', stickyLeft: false, hidden: true},
+    ]
+
+    return (
+
+        <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
+            {paySelect && paySelect.length > 0 && (
+                <div className="p-2" style={{
+                    background: 'var(--background-tertiary)',
+                    paddingBottom: '4px',
+                    paddingLeft: '3px',
+                    marginTop: '-10px',
+                }}>
+                    <sub><span className="font-semibold">{paySelect[0].emp_id}: </span></sub>
+                    <sub><span className="font-semibold">{(() => {
+                        const date = new Date(paySelect[0].week_done);
+                        if (!isNaN(date.getTime())) {
+                            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                            const day = String(date.getUTCDate()).padStart(2, '0');
+                            const year = date.getUTCFullYear();
+                            return `${month}/${day}/${year}`;
                         }
-                        title={String(rawValue)}
-                      >
-                        {isBoolean ? (
-                          <input type="checkbox" checked={Boolean(rawValue)} readOnly aria-label={col.label} />
-                        ) : (
-                          String(rawValue)
-                        )}
-                      </div>
-                    </td>
-                  )
-                })}
-              </tr>
-            )
-          })}
-        </tbody>
+                        return paySelect[0].week_done;
+                    })()}</span></sub>
+                    <sub>: <span className="text-shadow-md">{paySelect[0].route} Route</span></sub>
+                </div>
+            )}
+            {paySelect && paySelect.length > 0 && (
+                <div>
+                    <input className={'border hidden'} id="pselect-uid" name="uid"
+                           defaultValue={String(paySelect[0].uid)}/>
+                    <input className={'border hidden'} id="pselect-emp_id" name="emp_id"
+                           defaultValue={String(paySelect[0].emp_id)}/>
+                    <input className={'border hidden'} id="pselect-start" name="start"
+                           defaultValue={String(paySelect[0].start)}/>
+                    <input className={'border hidden'} id="pselect-end" name="end"
+                           defaultValue={String(paySelect[0].end)}/>
+                    <input className={'border hidden'} id="pselect-week_done" name="week_done"
+                           defaultValue={String(paySelect[0].week_done)}/>
+                    <input className={'border hidden'} id="pselect-old_start" name="old_start"
+                           defaultValue={String(paySelect[0].old_start)}/>
+                    <input className={'border hidden'} id="pselect-old_end" name="old_end"
+                           defaultValue={String(paySelect[0].old_end)}/>
+                    <input className={'border hidden'} id="pselect-mile_rate" name="mile_rate"
+                           defaultValue={String(paySelect[0].mile_rate)}/>
+                    <input className={'border hidden'} id="pselect-chk_price_paid" name="chk_price_paid"
+                           defaultValue={String(paySelect[0].chk_price_paid)}/>
+                    <input className={'border hidden'} id="pselect-reim_exp" name="reim_exp"
+                           defaultValue={String(paySelect[0].reim_exp)}/>
+                    <input className={'border hidden'} id="pselect-otime_percentage" name="otime_percentage"
+                           defaultValue={String(paySelect[0].otime_percentage)}/>
+                    <input className={'border hidden'} id="pselect-spec_equip" name="spec_equip"
+                           defaultValue={String(paySelect[0].spec_equip)}/>
+                    <input className={'border hidden'} id="pselect-billing_date" name="billing_date"
+                           defaultValue={String(paySelect[0].billing_date)}/>
+                    <input className={'border hidden'} id="pselect-invoice_num" name="invoice_num"
+                           defaultValue={String(paySelect[0].invoice_num)}/>
+                </div>
 
-        <tfoot>
-          <tr>
-            <td
-              colSpan={columns.length}
-              style={{
-                position: 'sticky',
-                bottom: '0px',
-                zIndex: 60,
-                backgroundColor: 'var(--background, white)',
-                padding: '0px 7px',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  fontSize: '11px',
-                }}
-              >
+            )}
+            {/* make the scroll area a flex child so it can size correctly */}
+            <div className="flex-1 overflow-auto table-scroll min-h-0">
+                <table className="data-table w-full" style={{tableLayout: 'fixed'}}>
+                    <thead
+                        className={'bg-white border-b border-gray-200 sticky-top'}
+                        style={{
+                            zIndex: 20,
+                            top: '0px',
+                        }}
+                    >
+                    <tr>
+                        {columns.map((col) => (
+                            <th
+                                key={col.key}
+                                className={`${col.hidden ? 'hidden' : ''} ${col.responsiveClassName ?? ''}`}
+                                style={{width: col.width, paddingTop: '0px', paddingBottom: '2px'}}
+                            >
+                                <div title={col.label} className={'truncate'}>
+                                    {col.label}
+                                </div>
+                            </th>
+                        ))}
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {tasks.map((task, rowIndex) => {
+                        const rowKey = rowKeys[rowIndex] ?? String(rowIndex)
+                        return (
+                            <tr key={rowKey}>
+                                {columns.map((col) => {
+                                        const value = (task as Record<string, unknown>)[col.key]
+                                        const rawValue = col.key === 'rec_id' ? value : col.key === 'cust_id' ? value : col.key === 'company' ? value : value
+
+                                        let cellContent: React.ReactNode
+                                        let formattedValue: string | undefined
+
+
+                                        switch (col.key) {
+                                            // General
+                                            case 'rec_id':
+                                            case 'cust_id':
+                                            case 'company':
+                                            case 'description':
+                                            case 'route':
+                                            case 'type':
+                                            case 'uid':
+                                            case 'emp_id':
+                                                cellContent = String(rawValue ?? '')
+                                                break
+
+                                            // Boolean
+                                            case 'cod':
+                                            case 'other_bill':
+                                                break
+
+                                            // Monetary
+                                            case 'charge':
+                                            case 'price':
+                                            case 'cash_paid':
+                                                const num = parseFloat(String(rawValue));
+                                                cellContent = (rawValue == null || rawValue === 'None' || isNaN(num))
+                                                    ? ''
+                                                    : new Intl.NumberFormat('en-US', {
+                                                        style: 'currency',
+                                                        currency: 'USD'
+                                                    }).format(num);
+                                                break
+
+                                            // Date
+                                            case 'week_of':
+                                            case 'temp_deposit_date':
+                                                const date = new Date(String(rawValue));
+                                                if (rawValue && !isNaN(date.getTime())) {
+                                                    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                                                    const day = String(date.getUTCDate()).padStart(2, '0');
+                                                    const year = date.getUTCFullYear();
+                                                    formattedValue = `${month}/${day}/${year}`;
+                                                    cellContent = formattedValue;
+                                                } else {
+                                                    cellContent = '';
+                                                }
+                                                break
+
+                                            // Custom
+                                            case 'done_by':
+                                                const employeeOptions = [
+                                                    {value: 'emp1', label: 'Employee 1'},
+                                                    {value: 'emp2', label: 'Employee 2'},
+                                                    {value: 'emp3', label: 'Employee 3'},
+                                                ];
+                                                const currentDoneByValue = String(rawValue ?? '');
+                                                const doneByValueExists = employeeOptions.some(opt => opt.value === currentDoneByValue);
+
+                                                cellContent = (
+                                                    <select
+                                                        defaultValue={currentDoneByValue}
+                                                        aria-label={col.label}
+                                                        className={"w-full bg-transparent p-1"}
+                                                        style={{
+                                                            background: 'var(--background-tertiary)',
+                                                            color: 'var(--foreground)',
+                                                            border: '1px solid var(--border-color)'
+                                                        }}
+                                                    >
+                                                        <option value=""></option>
+                                                        {!doneByValueExists && currentDoneByValue && (
+                                                            <option value={currentDoneByValue}>{currentDoneByValue}</option>
+                                                        )}
+                                                        {employeeOptions.map(opt => (
+                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                        ))}
+                                                    </select>
+                                                );
+                                                break;
+
+                                            case 'comment':
+                                                const commentOptions = [
+                                                    {value: 'com1', label: 'Comment 1'},
+                                                    {value: 'com2', label: 'Comment 2'},
+                                                    {value: 'com3', label: 'Comment 3'},
+                                                ];
+                                                const currentCommentValue = String(rawValue ?? '');
+                                                const commentValueExists = commentOptions.some(opt => opt.value === currentCommentValue);
+
+                                                cellContent = (
+                                                    <select
+                                                        defaultValue={currentCommentValue}
+                                                        aria-label={col.label}
+                                                        className={"w-full bg-transparent"}
+                                                        style={{
+                                                            background: 'var(--background-tertiary)',
+                                                            color: 'var(--foreground)',
+                                                            border: '1px solid var(--border-color)'
+                                                        }}
+                                                    >
+                                                        <option value=""></option>
+                                                        {!commentValueExists && currentCommentValue && (
+                                                            <option
+                                                                value={currentCommentValue}>{currentCommentValue}</option>
+                                                        )}
+                                                        {commentOptions.map(opt => (
+                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                        ))}
+                                                    </select>
+                                                );
+                                                break;
+
+                                            case 'work_order':
+                                                cellContent = (
+                                                    <input
+                                                        type={'text'}
+                                                        value={String(rawValue ?? '')}
+                                                        className={'w-full bg-transparent p-1'}
+                                                        style={{border: '1px solid var(--border-color)', paddingLeft: '4px'}}
+                                                    />
+                                                )
+                                                break
+
+
+                                            // All Others
+                                            default:
+                                                cellContent = String(rawValue ?? '')
+                                                break
+                                        }
+
+                                        return (
+                                            <td
+                                                key={col.key}
+                                                className={`${col.hidden ? 'hidden' : ''} ${col.responsiveClassName ?? ''}`}
+                                                style={{width: col.width}}
+                                            >
+                                                <div title={formattedValue ?? String(rawValue ?? '')}>
+                                                    {cellContent}
+                                                </div>
+                                            </td>
+                                        )
+                                    }
+                                )
+                                }
+                            </tr>
+                        )
+                    })}
+                    </tbody>
+                </table>
+            </div>
+            <div style={{paddingLeft: '3px'}}>
                 <div>Showing {tasks.length} tasks</div>
                 <div className="text-sm text-gray-500">Last updated: {/* optional date */}</div>
-              </div>
-              <div className="flex justify-left border-t border-gray-200 ">
-                {Array.from({ length: 9 }).map((_, i) => (
-                  <button key={i} type="button" className=" rounded bg-gray-100 hover:bg-gray-200 text-sm mx-1" aria-label={`Action ${i + 1}`}>
-                    Action {i + 1}
-                  </button>
-                ))}
-              </div>
-            </td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  )
+            </div>
+            <div className={'col-span-10 content-start'}>
+                <button className="btn btn-primary flex items-center gap-2"
+                        style={{
+                            width: '95px',
+                            height: '25px',
+                            marginTop: '2px',
+                            marginBottom: '2px',
+                            marginLeft: '4px'
+                        }}>Insert
+                    Entry
+                </button>
+                <button className="btn btn-primary flex items-center gap-2"
+                        style={{
+                            width: '85px',
+                            height: '25px',
+                            marginTop: '2px',
+                            marginBottom: '2px',
+                            marginLeft: '4px'
+                        }}>Comment
+                </button>
+                <button className="btn btn-primary flex items-center gap-2"
+                        style={{
+                            width: '130px',
+                            height: '25px',
+                            marginTop: '2px', marginBottom: '2px',
+                            marginLeft: '4px'
+                        }}>Commission
+                    Rate
+                </button>
+                <button className="btn btn-primary flex items-center gap-2"
+                        style={{
+                            width: '115px',
+                            height: '25px',
+                            marginTop: '2px', marginBottom: '2px',
+                            marginLeft: '4px'
+                        }}>Change Payroll
+                </button>
+                <button className="btn btn-primary flex items-center gap-2"
+                        style={{
+                            width: '75px',
+                            height: '25px',
+                            marginTop: '2px',
+                            marginBottom: '2px',
+                            marginLeft: '4px'
+                        }}>Deposit
+                </button>
+                <button className="btn btn-primary flex items-center gap-2"
+                        style={{
+                            width: '100px',
+                            height: '25px',
+                            marginTop: '2px', marginBottom: '2px',
+                            marginLeft: '4px'
+                        }}>View Report
+                </button>
+                <button className="btn btn-primary flex items-center gap-2"
+                        style={{
+                            width: '80px',
+                            height: '25px',
+                            marginTop: '2px',
+                            marginBottom: '2px',
+                            marginLeft: '4px'
+                        }}>Clear
+                    All
+                </button>
+                <button className="btn btn-primary flex items-center gap-2"
+                        style={{
+                            width: '125px',
+                            height: '25px',
+                            marginTop: '2px', marginBottom: '2px',
+                            marginLeft: '4px'
+                        }}>Print NOT DONE
+                </button>
+                <button className="btn btn-primary flex items-center gap-2"
+                        style={{
+                            width: '130px',
+                            height: '25px',
+                            marginTop: '2px', marginBottom: '2px',
+                            marginLeft: '4px'
+                        }}>Clear NOT DONE
+                </button>
+                <button className="btn btn-primary flex items-center gap-2"
+                        style={{
+                            width: '200px',
+                            height: '25px',
+                            marginTop: '2px', marginBottom: '2px',
+                            marginLeft: '4px'
+                        }}>Show Projected
+                    Deposit Date
+                </button>
+            </div>
+        </div>
+    )
 }

@@ -81,9 +81,11 @@ class PayrollTasks(models.Model):
     def __str__(self):
         return f"Payroll Task {self.uid} (Cust: {self.company}, Desc: {self.description}, Price: {self.price})"
 
+
 class PSelect(models.Model):
     uid = models.AutoField(primary_key=True, db_column='UID')
-    emp_id = models.CharField(max_length=50, null=True, blank=True, db_column='EmpID', validators=[MinLengthValidator(1)])
+    emp_id = models.CharField(max_length=50, null=True, blank=True, db_column='EmpID',
+                              validators=[MinLengthValidator(1)])
     start = models.DateTimeField(null=True, blank=True, db_column='start')
     end = models.DateTimeField(null=True, blank=True, db_column='End')
     week_done = models.DateTimeField(null=True, blank=True, db_column='WeekDone')
@@ -97,7 +99,9 @@ class PSelect(models.Model):
     spec_equip = models.BooleanField(default=False, db_column='SpecEquip')
     billing_date = models.DateTimeField(null=True, blank=True, db_column='BillingDate')
     invoice_num = models.FloatField(null=True, blank=True, db_column='InvoiceNum')
-    trav_dir = models.CharField(max_length=50, null=True, blank=True, db_column='TravDir', validators=[MinLengthValidator(1)])
+    trav_dir = models.CharField(max_length=50, null=True, blank=True, db_column='TravDir',
+                                validators=[MinLengthValidator(1)]),
+    route = models.CharField(max_length=3, null=True, blank=True, db_column='Route')
 
     # Convenience read-only properties that return only the date portion formatted as MM/DD/YYYY
     @property
@@ -158,6 +162,13 @@ class PSelect(models.Model):
                 return self.billing_date.date().strftime('%m/%d/%Y')
             except Exception:
                 return None
+        return None
+
+    @property
+    def reim_exp_currency(self):
+        """Return reim_exp formatted as currency (e.g., $1,234.56), or None."""
+        if self.reim_exp is not None:
+            return f"{self.reim_exp:,.2f}"
         return None
 
     class Meta:

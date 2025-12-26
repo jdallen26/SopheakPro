@@ -80,6 +80,7 @@ def sites(request):
     in_monthly = validate_bool(request.GET.get('in_monthly', ''))
     show_all = validate_bool(request.GET.get('show_all', '0') in ('1', 'true', 'True'))
     count_only = validate_bool(request.GET.get('count_only', '0') in ('1', 'true', 'True'))
+    limit = int(request.GET.get('limit', MAX_RECORDS))
 
     if cust_id not in ('', None):
         filters['cust_id'] = cust_id
@@ -123,7 +124,7 @@ def sites(request):
                 # model is not registered; return empty consistent response
                 data = []
             else:
-                qs = model.objects.filter(**filters) if filters else model.objects.all()[:MAX_RECORDS]
+                qs = model.objects.filter(**filters) if filters else model.objects.all()[:limit]
                 if q:
                     qs = qs.filter(company__icontains=q) | qs.filter(cust_id__icontains=q)
 
@@ -201,7 +202,9 @@ def task_list(request):
     route = request.GET.get('route', '').strip()
     week_of = request.GET.get('week_of', '').strip()
     count_only = validate_bool(request.GET.get('count_only'))
+    limit = int(request.GET.get('limit', MAX_RECORDS))
 
+    # Builtin filters
     if cust_id not in ('', None):
         filters['cust_id__iexact'] = cust_id
     if route not in ('', None):
@@ -215,8 +218,8 @@ def task_list(request):
             return JsonResponse({'count': 0, 'tasks': []})
 
         base_qs = Tasks.objects.filter(**filters) if filters else Tasks.objects.all()
-        base_qs = base_qs.order_by('week_of', 'uid')
-        qs = base_qs[:MAX_RECORDS]
+        base_qs = base_qs.order_by('route', 'order', 'company', 'week_of', 'cust_id', 'type', 'task_order')
+        qs = base_qs[:limit]
 
         def _fmt_task(t):
             return {
@@ -228,7 +231,7 @@ def task_list(request):
                 'charge': str(getattr(t, 'charge', '')),
                 'done_by': getattr(t, 'done_by', '') or '',
                 'emp_id': getattr(t, 'emp_id', None),
-                'cash_paid': str(getattr(t, 'cash_paid', '')),
+                'cash_paid': str(getattr(t, 'cash_paid', None)),
                 'commission': getattr(t, 'commission', None),
                 'route': getattr(t, 'route', '') or '',
                 'cod': bool(getattr(t, 'cod', False)),
@@ -272,12 +275,15 @@ def pselect(request):
             # invalid id -> no results
             return JsonResponse({'count': 0, 'pselect': []})
     else:
-        return JsonResponse({'count': 0, 'pselect': []})
+        try:
+            filters['uid'] = 1
+        except (ValueError, TypeError):
+            return JsonResponse({'count': 0, 'pselect': []})
 
     try:
         try:
             p_model = apps.get_model('payroll', 'Pselect')
-        except:
+        except (ValueError, TypeError):
             return JsonResponse({'count': 0, 'pselect': []})
 
         p_rec = p_model.objects.filter(**filters) if filters else p_model.objects.all()[:MAX_RECORDS]
@@ -289,15 +295,16 @@ def pselect(request):
                 'start': getattr(p, 'start_mmddyyyy', '') or '',
                 'end': getattr(p, 'end_mmddyyyy', '') or '',
                 'week_done': getattr(p, 'week_done_mmddyyyy', '') or '',
-                'old_start': getattr(p, 'oldstart_mmddyyyy', '') or '',
-                'old_end': getattr(p, 'oldend_mmddyyyy', '') or '',
+                'old_start': getattr(p, 'olds tart_mmddyyyy', '') or '',
+                'old_end': getattr(p, 'olden_mmddyyyy', '') or '',
                 'mile_rate': getattr(p, 'mile_rate', '') or '',
                 'chk_price_paid': getattr(p, 'chk_price_paid', '') or '',
-                'reim_exp': getattr(p, 'reim_exp', '') or '',
+                'reim_exp': getattr(p, 'reim_exp_currency', '') or '',
                 'otime_percentage': getattr(p, 'otime_percentage', '') or '',
                 'spec_equip': bool(getattr(p, 'spec_equip', False)),
                 'billing_date': getattr(p, 'billing_date_mmddyyyy', '') or '',
                 'invoice_num': getattr(p, 'invoice_num', '') or '',
+                'route': getattr(p, 'route', '') or '',
             }
 
         data = [_fmt_task(t) for t in p_rec]

@@ -410,7 +410,9 @@ def invoice_tasks(request):
                 if work_order not in ('', None):
                     filters['work_order__iexact'] = work_order
 
-                qs = Model.objects.filter(**filters) if filters else Model.objects.all()[:MAX_RECORDS]
+                qs = Model.objects.filter(**filters) if filters else Model.objects.all()
+                if not filters:
+                    qs = qs[:MAX_RECORDS]
 
                 if q:
                     # numeric q prefers numeric-id fields
@@ -529,3 +531,15 @@ def debug_accounting_model(request):
         info['import_traceback'] = traceback.format_exc()
 
     return JsonResponse(info)
+
+def edit_invoice(request):
+    pass
+
+def edit_invoice_task(request):
+    pass
+
+def edit_deposit(request):
+    pass
+
+def edit_invoice_history(request):
+    pass
