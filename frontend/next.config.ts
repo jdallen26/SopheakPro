@@ -1,7 +1,6 @@
 import type {NextConfig} from "next";
-import path from 'path';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3000/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://192.168.12.241:3000/api';
 
 const nextConfig: NextConfig = {
     async rewrites() {
