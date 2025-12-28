@@ -78,28 +78,14 @@ export default function Header(): React.ReactElement {
       </div>
 
       <div className="flex items-center gap-1 ml-4">
-        <button
+       <button
           type="button"
           className="p-2 rounded transition-colors relative"
           style={{ color: 'var(--foreground-secondary)' }}
           onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
           onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
         >
-          <Search size={18} />
-        </button>
-
-        <button
-          type="button"
-          className="p-2 rounded transition-colors relative"
-          style={{ color: 'var(--foreground-secondary)' }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-        >
-          <Bell size={18} />
-          <span
-            className="absolute top-1 right-1 w-2 h-2 rounded-full"
-            style={{ background: '#ff5b57' }}
-          />
+          <Bell size={20} />
         </button>
 
         <div className="relative" ref={settingsRef}>
@@ -116,7 +102,7 @@ export default function Header(): React.ReactElement {
               if (!settingsOpen) e.currentTarget.style.background = 'transparent'
             }}
           >
-            <Settings size={18} />
+            <Settings size={20} />
           </button>
 
           {settingsOpen && (

@@ -31,6 +31,7 @@ interface Task {
 interface PaySelect {
     uid: number
     emp_id: number
+    emp_name: string
     start: string
     end: string
     week_done: string
@@ -44,12 +45,7 @@ interface PaySelect {
     billing_date: string
     invoice_num: number
     route: string
-}
-
-interface Employee {
-    emp_id: number
-    name: string
-    emp_comm_rate: number
+    route_description: string
 }
 
 type Column = {
@@ -73,7 +69,7 @@ export default function TasksClient(): React.ReactElement {
 
         async function fetchPSelect() {
             try {
-                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.12.241:8000').replace(/\/$/, '')
                 const url = `${API_BASE}/api/v1/payroll/pselect`
                 const res = await fetch(url, {signal: ac.signal, cache: 'no-store'})
 
@@ -148,9 +144,8 @@ export default function TasksClient(): React.ReactElement {
 
                 const route = paySelect![0].route;
 
-                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.12.241:8000').replace(/\/$/, '')
                 const url = `${API_BASE}/api/v1/payroll/task_list/?refresh=1&week_of=${weekOf}&route=${route}`
-                //const url = `${API_BASE}/api/v1/payroll/task_list/?refresh=1&route=${route}`
                 const res = await fetch(url, {signal: ac.signal, cache: 'no-store'})
 
                 const contentType = res.headers.get('content-type') || ''
@@ -209,6 +204,14 @@ export default function TasksClient(): React.ReactElement {
         if (!tasks) return []
         return tasks.map((t, i) => String(t.rec_id ?? i))
     }, [tasks])
+
+    const progress = useMemo(() => {
+        if (!tasks || tasks.length === 0) {
+            return 0;
+        }
+        const completedTasks = tasks.filter(t => t.done_by && t.done_by.trim() !== '').length;
+        return Math.round((completedTasks / tasks.length) * 100);
+    }, [tasks]);
 
     if (error) return <p className="p-4 text-red-600" style={{paddingLeft: '10px'}}>Error: {error}</p>
     if (tasks === null) return <p className="p-4" style={{paddingLeft: '10px'}}>Loading…</p>
@@ -286,20 +289,38 @@ export default function TasksClient(): React.ReactElement {
                     background: 'var(--background-tertiary)',
                     paddingBottom: '4px',
                     paddingLeft: '3px',
-                    marginTop: '-10px',
+                    marginTop: '-5px',
                 }}>
-                    <sub><span className="font-semibold">{paySelect[0].emp_id}: </span></sub>
-                    <sub><span className="font-semibold">{(() => {
-                        const date = new Date(paySelect[0].week_done);
-                        if (!isNaN(date.getTime())) {
-                            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-                            const day = String(date.getUTCDate()).padStart(2, '0');
-                            const year = date.getUTCFullYear();
-                            return `${month}/${day}/${year}`;
-                        }
-                        return paySelect[0].week_done;
-                    })()}</span></sub>
-                    <sub>: <span className="text-shadow-md">{paySelect[0].route} Route</span></sub>
+                    <div className="flex items-center justify-between">
+                        <div className="flex-shrink-0">
+                            <sub><span className="font-semibold">{paySelect[0].emp_name || paySelect[0].emp_id}: </span></sub>
+                            <sub><span>{(() => {
+                                const date = new Date(paySelect[0].week_done);
+                                if (!isNaN(date.getTime())) {
+                                    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                                    const day = String(date.getUTCDate()).padStart(2, '0');
+                                    const year = date.getUTCFullYear();
+                                    return `${month}/${day}/${year}`;
+                                }
+                                return paySelect[0].week_done;
+                            })()}</span></sub>
+                            <sub>: <span>{paySelect[0].route} Route</span></sub>
+                            <sub>: <span>{paySelect[0].route_description}</span></sub>
+                        </div>
+                        <div>
+                            <div className="h-4 w-full rounded-full bg-gray-200 overflow-hidden"
+                                 style={{width: '150px', height: '8px'}}>
+                                <div
+                                    className={`h-full transition-all duration-500 ease-out bg-gradient-to-r ${
+                                        progress <= 60 ? 'from-red-900 to-red-500' :
+                                            progress <= 85 ? 'from-amber-900 to-amber-500' :
+                                                'from-green-700 to-green-400'
+                                    }`}
+                                    style={{width: `${progress}%`}}
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
             {paySelect && paySelect.length > 0 && (
@@ -489,7 +510,10 @@ export default function TasksClient(): React.ReactElement {
                                                         type={'text'}
                                                         value={String(rawValue ?? '')}
                                                         className={'w-full bg-transparent p-1'}
-                                                        style={{border: '1px solid var(--border-color)', paddingLeft: '4px'}}
+                                                        style={{
+                                                            border: '1px solid var(--border-color)',
+                                                            paddingLeft: '4px'
+                                                        }}
                                                     />
                                                 )
                                                 break
@@ -528,89 +552,163 @@ export default function TasksClient(): React.ReactElement {
             <div className={'col-span-10 content-start'}>
                 <button className="btn btn-primary flex items-center gap-2"
                         style={{
-                            width: '95px',
-                            height: '25px',
+                            backgroundColor: 'var(--button-bg)',
+                            color: 'var(--button-text)',
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--button-bg)'
+                            e.currentTarget.style.color = 'var(--button-text)'
                         }}>Insert
                     Entry
                 </button>
                 <button className="btn btn-primary flex items-center gap-2"
                         style={{
-                            width: '85px',
-                            height: '25px',
+                            backgroundColor: 'var(--button-bg)',
+                            color: 'var(--button-text)',
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--button-bg)'
+                            e.currentTarget.style.color = 'var(--button-text)'
                         }}>Comment
                 </button>
                 <button className="btn btn-primary flex items-center gap-2"
                         style={{
-                            width: '130px',
-                            height: '25px',
+                            backgroundColor: 'var(--button-bg)',
+                            color: 'var(--button-text)',
                             marginTop: '2px', marginBottom: '2px',
                             marginLeft: '4px'
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--button-bg)'
+                            e.currentTarget.style.color = 'var(--button-text)'
                         }}>Commission
                     Rate
                 </button>
                 <button className="btn btn-primary flex items-center gap-2"
                         style={{
-                            width: '115px',
-                            height: '25px',
+                            backgroundColor: 'var(--button-bg)',
+                            color: 'var(--button-text)',
                             marginTop: '2px', marginBottom: '2px',
                             marginLeft: '4px'
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--button-bg)'
+                            e.currentTarget.style.color = 'var(--button-text)'
                         }}>Change Payroll
                 </button>
                 <button className="btn btn-primary flex items-center gap-2"
                         style={{
-                            width: '75px',
-                            height: '25px',
+                            backgroundColor: 'var(--button-bg)',
+                            color: 'var(--button-text)',
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--button-bg)'
+                            e.currentTarget.style.color = 'var(--button-text)'
                         }}>Deposit
                 </button>
                 <button className="btn btn-primary flex items-center gap-2"
                         style={{
-                            width: '100px',
-                            height: '25px',
+                            backgroundColor: 'var(--button-bg)',
+                            color: 'var(--button-text)',
                             marginTop: '2px', marginBottom: '2px',
                             marginLeft: '4px'
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--button-bg)'
+                            e.currentTarget.style.color = 'var(--button-text)'
                         }}>View Report
                 </button>
                 <button className="btn btn-primary flex items-center gap-2"
                         style={{
-                            width: '80px',
-                            height: '25px',
+                            backgroundColor: 'var(--button-bg)',
+                            color: 'var(--button-text)',
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--button-bg)'
+                            e.currentTarget.style.color = 'var(--button-text)'
                         }}>Clear
                     All
                 </button>
                 <button className="btn btn-primary flex items-center gap-2"
                         style={{
-                            width: '125px',
-                            height: '25px',
-                            marginTop: '2px', marginBottom: '2px',
+                            backgroundColor: 'var(--button-bg)',
+                            color: 'var(--button-text)',
+                            marginTop: '2px',
+                            marginBottom: '2px',
                             marginLeft: '4px'
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--button-bg)'
+                            e.currentTarget.style.color = 'var(--button-text)'
                         }}>Print NOT DONE
                 </button>
                 <button className="btn btn-primary flex items-center gap-2"
                         style={{
-                            width: '130px',
-                            height: '25px',
-                            marginTop: '2px', marginBottom: '2px',
+                            backgroundColor: 'var(--button-bg)',
+                            color: 'var(--button-text)',
+                            marginTop: '2px',
+                            marginBottom: '2px',
                             marginLeft: '4px'
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--button-bg)'
+                            e.currentTarget.style.color = 'var(--button-text)'
                         }}>Clear NOT DONE
                 </button>
                 <button className="btn btn-primary flex items-center gap-2"
                         style={{
-                            width: '200px',
-                            height: '25px',
-                            marginTop: '2px', marginBottom: '2px',
+                            backgroundColor: 'var(--button-bg)',
+                            color: 'var(--button-text)',
+                            marginTop: '2px',
+                            marginBottom: '2px',
                             marginLeft: '4px'
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--button-bg)'
+                            e.currentTarget.style.color = 'var(--button-text)'
                         }}>Show Projected
                     Deposit Date
                 </button>
@@ -618,3 +716,4 @@ export default function TasksClient(): React.ReactElement {
         </div>
     )
 }
+

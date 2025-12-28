@@ -5,6 +5,7 @@ from django.core.validators import MinValueValidator, MinLengthValidator
 from django.db.models import Index
 from django.conf import settings
 from reportlab.lib.colors import describe
+from datetime import datetime, date
 
 from utils import dt
 
@@ -86,6 +87,8 @@ class PSelect(models.Model):
     uid = models.AutoField(primary_key=True, db_column='UID')
     emp_id = models.CharField(max_length=50, null=True, blank=True, db_column='EmpID',
                               validators=[MinLengthValidator(1)])
+    emp_name = models.CharField(max_length=50, null=True, blank=True, db_column='EmpName',
+                              validators=[MinLengthValidator(1)])
     start = models.DateTimeField(null=True, blank=True, db_column='start')
     end = models.DateTimeField(null=True, blank=True, db_column='End')
     week_done = models.DateTimeField(null=True, blank=True, db_column='WeekDone')
@@ -99,9 +102,8 @@ class PSelect(models.Model):
     spec_equip = models.BooleanField(default=False, db_column='SpecEquip')
     billing_date = models.DateTimeField(null=True, blank=True, db_column='BillingDate')
     invoice_num = models.FloatField(null=True, blank=True, db_column='InvoiceNum')
-    trav_dir = models.CharField(max_length=50, null=True, blank=True, db_column='TravDir',
-                                validators=[MinLengthValidator(1)]),
     route = models.CharField(max_length=3, null=True, blank=True, db_column='Route')
+    route_description = models.CharField(max_length=50, null=True, blank=True, db_column='route_description')
 
     # Convenience read-only properties that return only the date portion formatted as MM/DD/YYYY
     @property
@@ -172,10 +174,24 @@ class PSelect(models.Model):
         return None
 
     class Meta:
-        db_table = 'pselect'
+        db_table = 'vw_Payroll_pselect'
         verbose_name = 'PSelect'
         verbose_name_plural = 'PSelects'
         managed = _managed_for('accounting')
 
     def __str__(self):
         return f"PSelect {self.uid} (Emp: {self.emp_id})"
+
+class PayrollWeeks(models.Model):
+    row_id = models.CharField(max_length=10, primary_key=True, db_column='row_id')
+    payroll_week = models.DateTimeField(null=False, blank=False, db_column='payroll_week')
+    task_count = models.PositiveSmallIntegerField(default=1, db_column='task_count')
+
+    def __str__(self):
+        return f"PayrollWeeks {self.row_id} ({self.payroll_week or 'no week'})"
+
+    class Meta:
+        db_table = 'vw_Payroll_Payroll_Weeks'
+        verbose_name = 'Payroll Weeks'
+        verbose_name_plural = 'Payroll Weeks'
+        managed = False

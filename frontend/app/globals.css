@@ -36,6 +36,11 @@
     --active-text: #00acac;
     --card-bg: #ffffff;
     --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    /*--button-bg: #b8e3e9;*/
+    /*--button-bg: #b3ebf2;*/
+    /*--button-bg: #85d1db;*/
+    --button-bg: #00acac;
+    --button-text: #d9e0e7;
 }
 
 .dark {
@@ -53,6 +58,7 @@
     --card-bg: #2d353c;
     --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     --header-bg: #242a30;
+    --button-bg: #707478;
 }
 
 @theme inline {
@@ -181,15 +187,17 @@ body {
 
 .btn {
     display: inline-flex;
+    height: 16px;
     align-items: center;
     justify-content: center;
-    padding: 6px 12px;
+    padding: 0 2px 3px 1px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease-in-out;
     border: 1px solid transparent;
+    background: var(--background-tertiary);
 }
 
 .btn-primary {

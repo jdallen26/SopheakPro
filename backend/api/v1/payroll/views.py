@@ -292,6 +292,7 @@ def pselect(request):
             return {
                 'uid': getattr(p, 'uid', None),
                 'emp_id': int(getattr(p, 'emp_id', None)),
+                'emp_name': getattr(p, 'emp_name', '') or '',
                 'start': getattr(p, 'start_mmddyyyy', '') or '',
                 'end': getattr(p, 'end_mmddyyyy', '') or '',
                 'week_done': getattr(p, 'week_done_mmddyyyy', '') or '',
@@ -305,6 +306,7 @@ def pselect(request):
                 'billing_date': getattr(p, 'billing_date_mmddyyyy', '') or '',
                 'invoice_num': getattr(p, 'invoice_num', '') or '',
                 'route': getattr(p, 'route', '') or '',
+                'route_description': getattr(p, 'route_description', '') or ''
             }
 
         data = [_fmt_task(t) for t in p_rec]
@@ -312,6 +314,58 @@ def pselect(request):
         data = []
 
     return JsonResponse({'count': len(data), 'pselect': data})
+
+
+# python
+@require_GET
+def payroll_weeks(request):
+    limit = int(request.GET.get('limit', MAX_RECORDS))
+
+    try:
+        PayrollWeeks = apps.get_model('payroll', 'PayrollWeeks')
+        if PayrollWeeks is None:
+            return JsonResponse({'count': 0, 'weeks': []})
+
+        base_qs = PayrollWeeks.objects.all()
+        # use Django ordering syntax for descending
+        base_qs = base_qs.order_by('-payroll_week')
+        qs = base_qs[:limit]
+
+        def _format_date_mmddyyyy(val):
+            if not val:
+                return None
+            try:
+                # datetime or date
+                from datetime import datetime, date
+                if hasattr(val, 'date'):
+                    d = val.date() if isinstance(val, datetime) else val
+                    return d.strftime('%m/%d/%Y')
+                # string -> try ISO parse then fallback to raw string
+                if isinstance(val, str):
+                    try:
+                        dt = datetime.fromisoformat(val)
+                        return dt.date().strftime('%m/%d/%Y')
+                    except Exception:
+                        # last resort: return original string (or None)
+                        return val
+            except Exception:
+                return None
+            return None
+
+        def _fmt_week(w):
+            pw = getattr(w, 'payroll_week', None)
+            return {
+                'row_id': getattr(w, 'row_id', None),
+                'payroll_week': _format_date_mmddyyyy(pw),
+                'task_count': getattr(w, 'task_count', '') or '',
+            }
+
+        data = [_fmt_week(w) for w in qs]
+
+    except Exception:
+        data = []
+
+    return JsonResponse({'count': len(data), 'weeks': data})
 
 
 @require_GET
@@ -332,7 +386,7 @@ def debug_payroll_model(request):
 
     # apps.get_model attempt
     try:
-        Model = apps.get_model('payroll', 'PayrollTasks')
+        Model = apps.get_model('payroll', 'PayrollWeeks')
         info['apps_get_model_result'] = str(Model)
     except Exception as e:
         info['apps_get_model_error'] = repr(e)

@@ -77,3 +77,11 @@ FROM [Site] AS s
 WHERE s.Active = 1
   AND s.CustID NOT IN (SELECT [CustID] FROM MonthlyInvoice)
 GO
+
+CREATE VIEW [dbo].[vw_Payroll_Payroll_Weeks]
+AS
+	SELECT ROW_NUMBER() OVER (ORDER BY Weekdone) AS row_id, Weekdone as payroll_week, COUNT([weekDone]) AS task_count
+	FROM MonthlyInvoice
+	WHERE Weekdone >= DATEADD(DAY, -365, GETDATE())
+	GROUP BY Weekdone
+GO
