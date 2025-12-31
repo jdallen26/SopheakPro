@@ -1,7 +1,7 @@
 'use client'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
-import { Search, Mail, Bell, Settings, Sun, Moon, Monitor, Menu, User } from 'lucide-react'
+import { Search, Bell, Settings, Sun, Moon, Monitor, Menu} from 'lucide-react'
 
 export default function Header(): React.ReactElement {
   const settingsRef = useRef<HTMLDivElement | null>(null)

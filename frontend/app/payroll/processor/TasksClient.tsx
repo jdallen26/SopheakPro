@@ -2,6 +2,7 @@
 'use client'
 import React, {useEffect, useRef, useState, useMemo} from 'react'
 import {normalizeResponse} from './lib/normalizeResponse'
+import {usePayrollStore} from '@/app/store/payroll-store';
 
 interface Task {
     rec_id: number
@@ -31,7 +32,7 @@ interface Task {
 interface PaySelect {
     uid: number
     emp_id: number
-    emp_name: string
+    employee_name: string
     start: string
     end: string
     week_done: string
@@ -58,6 +59,7 @@ type Column = {
 }
 
 export default function TasksClient(): React.ReactElement {
+    const {openPayrollSelection, updatePayrollSelectionData} = usePayrollStore();
     const [tasks, setTasks] = useState<Task[] | null>(null)
     const [paySelect, setPaySelect] = useState<PaySelect[] | null>(null)
     const [error, setError] = useState<string | null>(null)
@@ -293,7 +295,7 @@ export default function TasksClient(): React.ReactElement {
                 }}>
                     <div className="flex items-center justify-between">
                         <div className="flex-shrink-0">
-                            <sub><span className="font-semibold">{paySelect[0].emp_name || paySelect[0].emp_id}: </span></sub>
+                            <sub><span className="font-semibold">{paySelect[0].employee_name || paySelect[0].emp_id}: </span></sub>
                             <sub><span>{(() => {
                                 const date = new Date(paySelect[0].week_done);
                                 if (!isNaN(date.getTime())) {
@@ -460,6 +462,7 @@ export default function TasksClient(): React.ReactElement {
                                                             color: 'var(--foreground)',
                                                             border: '1px solid var(--border-color)'
                                                         }}
+                                                        onChange={() => {}}
                                                     >
                                                         <option value=""></option>
                                                         {!doneByValueExists && currentDoneByValue && (
@@ -491,6 +494,7 @@ export default function TasksClient(): React.ReactElement {
                                                             color: 'var(--foreground)',
                                                             border: '1px solid var(--border-color)'
                                                         }}
+                                                        onChange={() => {}}
                                                     >
                                                         <option value=""></option>
                                                         {!commentValueExists && currentCommentValue && (
@@ -509,6 +513,7 @@ export default function TasksClient(): React.ReactElement {
                                                     <input
                                                         type={'text'}
                                                         value={String(rawValue ?? '')}
+                                                        readOnly
                                                         className={'w-full bg-transparent p-1'}
                                                         style={{
                                                             border: '1px solid var(--border-color)',
@@ -606,7 +611,14 @@ export default function TasksClient(): React.ReactElement {
                             color: 'var(--button-text)',
                             marginTop: '2px', marginBottom: '2px',
                             marginLeft: '4px'
-                        }}                        onMouseEnter={(e) => {
+                        }}
+                        onClick={() => {
+                            if (paySelect && paySelect.length > 0) {
+                                updatePayrollSelectionData(paySelect[0]);
+                                openPayrollSelection();
+                            }
+                        }}
+                        onMouseEnter={(e) => {
                             e.currentTarget.style.background = 'var(--hover-bg)'
                             e.currentTarget.style.color = 'var(--foreground)'
                         }}
@@ -712,6 +724,7 @@ export default function TasksClient(): React.ReactElement {
                         }}>Show Projected
                     Deposit Date
                 </button>
+
             </div>
         </div>
     )

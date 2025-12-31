@@ -1,15 +1,16 @@
 # python file api/accounting/views.py
 import importlib
+import json
 import os
 import sys
 import traceback
 
-from django.db.models import Q
-from django.http import JsonResponse, HttpResponse
-from django.views.decorators.http import require_GET
-from django.core.cache import cache
 from django.apps import apps
-from rest_framework.response import Response
+from django.core.cache import cache
+from django.db.models import Q
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from base import settings
 from base.settings import CACHE_TTL, MAX_RECORDS
@@ -47,6 +48,7 @@ def employees(request):
     subcontractor = validate_bool(request.GET.get('subcontractor', ''))
     is_1099 = validate_bool(request.GET.get('is_1099', ''))
     email = request.GET.get('email', '')
+    cache_key = None
 
     if emp_id:
         filters['id'] = emp_id
@@ -89,15 +91,12 @@ def employees(request):
 
     if 'no-cache' in cc or 'max-age=0' in cc:
         refresh = True
-
-        # if emp_id:
-        #     cache_key = f'hr_employees_v1_id_{emp_id}'
-        # elif company:
-        #     cache_key = f'hr_employees_v1_company_{company}'
-        # else:
         cache_key = 'hr_employees_v1_all'
 
-    data = None if refresh else cache.get(cache_key)
+    if refresh and cache.get(cache_key) is not None:
+        data = cache.get(cache_key)
+    else:
+        data = None
 
     if data is not None:
         if q:
@@ -207,6 +206,230 @@ def geo(request):
             "features": []
         }
     )
+
+
+@csrf_exempt
+@require_POST
+def create_employee(request):
+    """
+    POST /employees/create
+    Creates a new employee record
+    """
+    test = request.POST.get('test', '')
+
+    if test == '1':
+        return JsonResponse({'success': True, 'message': 'Test successful'})
+
+    try:
+        data = json.loads(request.body)
+
+        try:
+            Model = apps.get_model('hr', 'Employee')
+        except LookupError:
+            return JsonResponse({'error': 'Employee model not found'}, status=500)
+
+        # Create employee with provided data
+        employee = Model.objects.create(
+            id=data.get('id'),
+            name=data.get('name', ''),
+            company=data.get('company'),
+            ssn=data.get('ssn'),
+            employed=data.get('employed', False),
+            status=data.get('status'),
+            allowances=data.get('allowances', 0),
+            hourly=data.get('hourly', 0.00),
+            address1=data.get('address1'),
+            address2=data.get('address2'),
+            city=data.get('city'),
+            state=data.get('state'),
+            zip=data.get('zip'),
+            cell=data.get('cell'),
+            phone=data.get('phone'),
+            phone2=data.get('phone2'),
+            start_date=data.get('start_date'),
+            end_date=data.get('end_date'),
+            comm_rate=data.get('comm_rate', 0.35),
+            efficiency=data.get('efficiency'),
+            map_link=data.get('map_link'),
+            photo=data.get('photo'),
+            sales_commission_rate=data.get('sales_commission_rate', 0.0000),
+            pwd=data.get('pwd'),
+            driver=data.get('driver', False),
+            mass_mailer=data.get('mass_mailer', False),
+            has_personal_prospects=data.get('has_personal_prospects', False),
+            sales=data.get('sales', False),
+            subcontractor=data.get('subcontractor', False),
+            is_1099=data.get('is_1099', False),
+            fed_tax_number=data.get('fed_tax_number'),
+            entity=data.get('entity'),
+            email=data.get('email')
+        )
+
+        # Clear cache
+        cache.delete('hr_employees_v1_all')
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Employee created successfully',
+            'employee': {
+                'id': employee.id,
+                'name': employee.name,
+                'company': employee.company,
+                'email': employee.email
+            }
+        }, status=201)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["PUT", "PATCH"])
+def update_employee(request, emp_id):
+    """
+    PUT/PATCH /employees/<emp_id>
+    Updates an existing employee record
+    """
+    try:
+        data = json.loads(request.body)
+
+        try:
+            Model = apps.get_model('hr', 'Employee')
+        except LookupError:
+            return JsonResponse({'error': 'Employee model not found'}, status=500)
+
+        try:
+            employee = Model.objects.get(id=emp_id)
+        except Model.DoesNotExist:
+            return JsonResponse({'error': 'Employee not found'}, status=404)
+
+        # Update fields if provided
+        if 'name' in data:
+            employee.name = data['name']
+        if 'company' in data:
+            employee.company = data['company']
+        if 'ssn' in data:
+            employee.ssn = data['ssn']
+        if 'employed' in data:
+            employee.employed = data['employed']
+        if 'status' in data:
+            employee.status = data['status']
+        if 'allowances' in data:
+            employee.allowances = data['allowances']
+        if 'hourly' in data:
+            employee.hourly = data['hourly']
+        if 'address1' in data:
+            employee.address1 = data['address1']
+        if 'address2' in data:
+            employee.address2 = data['address2']
+        if 'city' in data:
+            employee.city = data['city']
+        if 'state' in data:
+            employee.state = data['state']
+        if 'zip' in data:
+            employee.zip = data['zip']
+        if 'cell' in data:
+            employee.cell = data['cell']
+        if 'phone' in data:
+            employee.phone = data['phone']
+        if 'phone2' in data:
+            employee.phone2 = data['phone2']
+        if 'start_date' in data:
+            employee.start_date = data['start_date']
+        if 'end_date' in data:
+            employee.end_date = data['end_date']
+        if 'comm_rate' in data:
+            employee.comm_rate = data['comm_rate']
+        if 'efficiency' in data:
+            employee.efficiency = data['efficiency']
+        if 'map_link' in data:
+            employee.map_link = data['map_link']
+        if 'photo' in data:
+            employee.photo = data['photo']
+        if 'sales_commission_rate' in data:
+            employee.sales_commission_rate = data['sales_commission_rate']
+        if 'pwd' in data:
+            employee.pwd = data['pwd']
+        if 'driver' in data:
+            employee.driver = data['driver']
+        if 'mass_mailer' in data:
+            employee.mass_mailer = data['mass_mailer']
+        if 'has_personal_prospects' in data:
+            employee.has_personal_prospects = data['has_personal_prospects']
+        if 'sales' in data:
+            employee.sales = data['sales']
+        if 'subcontractor' in data:
+            employee.subcontractor = data['subcontractor']
+        if 'is_1099' in data:
+            employee.is_1099 = data['is_1099']
+        if 'fed_tax_number' in data:
+            employee.fed_tax_number = data['fed_tax_number']
+        if 'entity' in data:
+            employee.entity = data['entity']
+        if 'email' in data:
+            employee.email = data['email']
+
+        employee.save()
+
+        # Clear cache
+        cache.delete('hr_employees_v1_all')
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Employee updated successfully',
+            'employee': {
+                'id': employee.id,
+                'name': employee.name,
+                'company': employee.company,
+                'email': employee.email
+            }
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_employee(request, emp_id):
+    """
+    DELETE /employees/<emp_id>
+    Deletes an employee record
+    """
+    try:
+        try:
+            Model = apps.get_model('hr', 'Employee')
+        except LookupError:
+            return JsonResponse({'error': 'Employee model not found'}, status=500)
+
+        try:
+            employee = Model.objects.get(id=emp_id)
+        except Model.DoesNotExist:
+            return JsonResponse({'error': 'Employee not found'}, status=404)
+
+        employee_data = {
+            'id': employee.id,
+            'name': employee.name,
+            'company': employee.company
+        }
+
+        employee.delete()
+
+        # Clear cache
+        cache.delete('hr_employees_v1_all')
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Employee deleted successfully',
+            'employee': employee_data
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @require_GET

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-interface PSelect {
+export interface PayrollSelectionData {
     uid: number;
     emp_id: number;
     start: string;
@@ -20,17 +20,22 @@ interface PSelect {
 }
 
 interface PayrollState {
-  isPopupOpen: boolean;
-  pselect: PSelect | null;
-  openPopup: () => void;
-  closePopup: () => void;
-  updatePselect: (newPselect: PSelect) => void;
+  isPayrollSelectionOpen: boolean;
+  payrollSelectionData: PayrollSelectionData | null;
+  openPayrollSelection: () => void;
+  closePayrollSelection: () => void;
+  updatePayrollSelectionData: (newPselect: PayrollSelectionData) => void;
 }
 
 export const usePayrollStore = create<PayrollState>((set) => ({
-  isPopupOpen: false,
-  pselect: null,
-  openPopup: () => set({ isPopupOpen: true }),
-  closePopup: () => set({ isPopupOpen: false }),
-  updatePselect: (newPselect) => set({ pselect: newPselect }),
+  isPayrollSelectionOpen: false,
+  payrollSelectionData: null,
+  openPayrollSelection: () => {
+    console.log('Opening payroll selection');
+    set({ isPayrollSelectionOpen: true });
+  },
+  closePayrollSelection: () => set({ isPayrollSelectionOpen: false }),
+  updatePayrollSelectionData: (newPselect) => set({ payrollSelectionData: newPselect }),
 }));
+
+
