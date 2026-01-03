@@ -3,9 +3,11 @@ import importlib
 import os
 import sys
 import traceback
+import json
 
 from django.http import JsonResponse, HttpResponse
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.core.cache import cache
 from django.apps import apps
 from django.db.models import Q
@@ -16,25 +18,32 @@ from base.settings import CACHE_TTL, MAX_RECORDS
 from utils.types import validate_bool
 
 
-@require_GET
+@csrf_exempt
+@require_POST
 #/task_list
 def task_list(request):
-    q = request.GET.get('q', '').strip()
-    task_id = request.GET.get('id', '').strip()
-    cust_id = request.GET.get('cust_id', '').strip()
-    master_id = request.GET.get('master_id', '').strip()
-    selected = validate_bool(request.GET.get('selected', None))
-    spec_equip = validate_bool(request.GET.get('spec_equip', None))
-    description = request.GET.get('description', '').strip()
-    task_type = request.GET.get('type', '').strip()
-    service_date = request.GET.get('service_date', '').strip()
-    next_due = request.GET.get('next_due', '').strip()
-    end_date = request.GET.get('end_date', '').strip()
-    frequency = request.GET.get('frequency', '').strip()
-    refresh = request.GET.get('refresh') in ('1', 'true', 'True')
-    cc = request.META.get('HTTP_CACHE_CONTROL', request.GET.get('cache-Control', ''))
-    show_all = validate_bool(request.GET.get('show_all'))
-    count_only = validate_bool(request.GET.get('count_only'))
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
+    q = str(payload.get('q', '')).strip()
+    task_id = payload.get('id', '')
+    cust_id = payload.get('cust_id', '')
+    master_id = payload.get('master_id', '')
+    selected = validate_bool(payload.get('selected'))
+    spec_equip = validate_bool(payload.get('spec_equip'))
+    description = payload.get('description', '').strip()
+    task_type = payload.get('type', '').strip()
+    service_date = payload.get('service_date', '').strip()
+    next_due = payload.get('next_due', '').strip()
+    end_date = payload.get('end_date', '').strip()
+    frequency = payload.get('frequency', '')
+    refresh = payload.get('refresh') in (True, '1', 'true', 'True')
+    cc = request.META.get('HTTP_CACHE_CONTROL', '')
+    show_all = validate_bool(payload.get('show_all'))
+    count_only = validate_bool(payload.get('count_only'))
+    limit = int(payload.get('limit', MAX_RECORDS))
 
     # Build filters only for provided params
     filters = {}
@@ -44,9 +53,9 @@ def task_list(request):
         filters['cust_id'] = cust_id
     if master_id:
         filters['master_id'] = master_id
-    if selected not in (None, ''):
+    if selected is not None:
         filters['selected'] = selected
-    if spec_equip not in (None, ''):
+    if spec_equip is not None:
         filters['spec_equipment'] = spec_equip
     if description:
         filters['description__icontains'] = description
@@ -72,7 +81,10 @@ def task_list(request):
     else:
         cache_key = f'routing_tasks_v1_show_all_{show_all}'
 
-    data = None if refresh else cache.get(cache_key)
+    data = None
+    if not refresh:
+        data = cache.get(cache_key)
+        
     if data is not None:
         if q:
             ql = q.lower()
@@ -82,6 +94,9 @@ def task_list(request):
                 or ql in (d.get('cust_id', '') or '').lower()
                 or ql in str(d.get('task_id', ''))
             ]
+        # Apply limit to cached data
+        if limit and len(data) > limit:
+            data = data[:limit]
     else:
         try:
             # runtime model resolution with fallbacks
@@ -117,6 +132,9 @@ def task_list(request):
                         )
 
                 qs = qs.order_by('task_order')
+                
+                # Apply limit
+                qs = qs[:limit]
 
                 data = [{
                     'id': getattr(t, 'id', 0),
@@ -155,14 +173,21 @@ def task_list(request):
 
 
 #/route_list
-@require_GET
+@csrf_exempt
+@require_POST
 def route_list(request):
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
     filters = {}
-    route_id = request.GET.get('id', '').strip()
-    route = request.GET.get('route', '').strip()
-    active = validate_bool(request.GET.get('active', None))
-    description = request.GET.get('description', '').strip()
-    count_only = validate_bool(request.GET.get('count_only', False))
+    route_id = payload.get('id', '')
+    route = payload.get('route', '')
+    active = validate_bool(payload.get('active'))
+    description = payload.get('description', '').strip()
+    count_only = validate_bool(payload.get('count_only'))
+    limit = int(payload.get('limit', MAX_RECORDS))
 
     if route_id not in ('', None):
         filters['id'] = route_id
@@ -171,7 +196,7 @@ def route_list(request):
     elif description not in ('', None):
         filters['description__icontains'] = description
 
-    if active:
+    if active is not None:
         filters['active'] = active
 
     try:
@@ -182,7 +207,11 @@ def route_list(request):
 
         qs = Routes.objects.filter(**filters) if filters else Routes.objects.all()
 
-        qs.order_by('sortOrder', 'route')
+        qs = qs.order_by('sortOrder', 'route')
+        
+        # Apply limit
+        qs = qs[:limit]
+        
         data = [{
             'id': getattr(r, 'id', None),
             'route': getattr(r, 'route', '') or '',
@@ -205,7 +234,8 @@ def route_list(request):
     return JsonResponse({'count': len(data), 'routes': data})
 
 
-@require_GET
+@csrf_exempt
+@require_POST
 def debug_routing_model(request):
     info = {}
     # environment

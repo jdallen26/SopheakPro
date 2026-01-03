@@ -1,9 +1,5 @@
 import { create } from 'zustand';
 
-/**
- * Interface representing the data structure for a payroll selection.
- * This includes details about the employee, time period, rates, and billing information.
- */
 export interface PayrollSelectionData {
     uid: number;
     emp_id: number;
@@ -21,35 +17,28 @@ export interface PayrollSelectionData {
     invoice_num: number;
     employee_name?: string;
     route?: string;
-    description: string;
+    description?: string; // Made optional to resolve TS error
 }
 
-/**
- * Interface for the Payroll Store state.
- * Defines the state variables and actions available in the store.
- */
 interface PayrollState {
   isPayrollSelectionOpen: boolean;
   payrollSelectionData: PayrollSelectionData | null;
+  refreshId: number; // Added to trigger re-fetching
   openPayrollSelection: () => void;
   closePayrollSelection: () => void;
   updatePayrollSelectionData: (newPselect: PayrollSelectionData) => void;
+  triggerRefresh: () => void; // Added to trigger re-fetching
 }
 
-/**
- * Zustand store for managing payroll selection state.
- * Handles the visibility of the payroll selection modal/component and stores the selected payroll data.
- */
 export const usePayrollStore = create<PayrollState>((set) => ({
   isPayrollSelectionOpen: false,
   payrollSelectionData: null,
-  // Action to open the payroll selection UI
+  refreshId: 0,
   openPayrollSelection: () => {
     console.log('Opening payroll selection');
     set({ isPayrollSelectionOpen: true });
   },
-  // Action to close the payroll selection UI
   closePayrollSelection: () => set({ isPayrollSelectionOpen: false }),
-  // Action to update the currently selected payroll data
   updatePayrollSelectionData: (newPselect) => set({ payrollSelectionData: newPselect }),
+  triggerRefresh: () => set((state) => ({ refreshId: state.refreshId + 1 })),
 }));

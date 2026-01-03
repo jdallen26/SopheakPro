@@ -37,7 +37,7 @@ export default function SitesClient(): React.ReactElement {
 
         async function fetchSites() {
             try {
-                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.1.50:8000').replace(/\/$/, '')
                 const url = `${API_BASE}/api/payroll/sites/?show_all=1&refresh=1`
                 const res = await fetch(url, {signal: ac.signal, cache: 'no-store'})
                 const text = await res.text()

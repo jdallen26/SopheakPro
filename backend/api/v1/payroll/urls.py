@@ -11,5 +11,6 @@ urlpatterns = [
     path('pselect', views.pselect, name='pselect'),
     path('pselect_edit', views.pselect_edit, name='pselect_edit'),
     path('payroll_weeks', views.payroll_weeks, name='payroll_weeks'),
+    path('payroll_aggregate', views.payroll_aggregate, name='payroll_aggregate'),
     path('debug_payroll_model', views.debug_payroll_model, name='debug_payroll_model'),
 ]

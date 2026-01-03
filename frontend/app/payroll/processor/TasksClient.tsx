@@ -1,11 +1,11 @@
 // typescript
 'use client'
 import React, {useEffect, useRef, useState, useMemo} from 'react'
-import {normalizeResponse} from './lib/normalizeResponse'
 import {usePayrollStore} from '@/app/store/payroll-store';
+import { toast } from '@/app/utils/toast';
+import ComboBox from '@/app/shared/components/ComboBox';
 
 interface Task {
-    rec_id: number
     cust_id: string
     company: string
     description: string
@@ -46,7 +46,12 @@ interface PaySelect {
     billing_date: string
     invoice_num: number
     route: string;
-    route_description: string; // Added to match API response
+    route_description: string;
+}
+
+interface ApiEmployee {
+    id: number;
+    name: string;
 }
 
 type Column = {
@@ -58,72 +63,93 @@ type Column = {
     responsiveClassName?: string
 }
 
+const formatToYyyyMmDd = (dateString: string): string => {
+    if (!dateString || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+        return dateString; // Return original if format is not mm/dd/yyyy
+    }
+    const [month, day, year] = dateString.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+};
+
 export default function TasksClient(): React.ReactElement {
-    const {openPayrollSelection, updatePayrollSelectionData} = usePayrollStore();
+    const {openPayrollSelection, updatePayrollSelectionData, refreshId} = usePayrollStore();
     const [tasks, setTasks] = useState<Task[] | null>(null)
     const [paySelect, setPaySelect] = useState<PaySelect[] | null>(null)
+    const [employees, setEmployees] = useState<ApiEmployee[]>([]);
     const [error, setError] = useState<string | null>(null)
+    const [progress, setProgress] = useState(0);
+    const [progressText, setProgressText] = useState('');
     const mountedRef = useRef(false)
+
+    const updateProgress = (currentTasks: Task[]) => {
+        if (!currentTasks || currentTasks.length === 0) {
+            setProgress(0);
+            setProgressText('');
+            return;
+        }
+        const completedTasks = currentTasks.filter(t => t.done_by && t.done_by.trim() !== '').length;
+        const totalTasks = currentTasks.length;
+        const percentage = Math.round((completedTasks / totalTasks) * 100);
+        
+        setProgress(percentage);
+        setProgressText(`${completedTasks} of ${totalTasks} Complete`);
+    };
 
     useEffect(() => {
         const ac = new AbortController()
         mountedRef.current = true
 
-        async function fetchPSelect() {
+        async function fetchInitialData() {
             try {
-                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.12.241:8000').replace(/\/$/, '')
-                const url = `${API_BASE}/api/v1/payroll/pselect`
-                const res = await fetch(url, {signal: ac.signal, cache: 'no-store'})
+                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.1.50:8000').replace(/\/$/, '')
+                
+                const pselectUrl = `${API_BASE}/api/v1/payroll/pselect`
+                const pselectRes = await fetch(pselectUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}),
+                    signal: ac.signal, 
+                    cache: 'no-store'
+                })
+                if (!pselectRes.ok) throw new Error(`PSelect fetch failed: ${pselectRes.status}`);
+                const pselectData = await pselectRes.json();
+                const pselectNormalized = pselectData?.pselect || [];
+                if (mountedRef.current) setPaySelect(pselectNormalized);
 
-                const contentType = res.headers.get('content-type') || ''
-                const text = await res.text()
+                const empUrl = `${API_BASE}/api/v1/hr/employees`;
+                const empRes = await fetch(empUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ employed: true }),
+                });
+                if (!empRes.ok) throw new Error(`Employees fetch failed: ${empRes.status}`);
+                const empData = await empRes.json();
+                const employeeList: ApiEmployee[] = empData?.employees || [];
+                if (mountedRef.current) setEmployees(employeeList);
 
-                if (!res.ok) {
-                    if (!ac.signal.aborted && mountedRef.current) {
-                        setError(`Fetch failed: ${res.status}`)
-                        setPaySelect([])
-                    }
-                    return
+            } catch(err) {
+                if ((err as Error).name !== 'AbortError' && mountedRef.current) {
+                    setError((err as Error).message);
+                    setPaySelect([]);
+                    setEmployees([]);
                 }
-
-                if (!contentType) {
-                    if (!ac.signal.aborted && mountedRef.current) {
-                        setError('Invalid response content type')
-                        setPaySelect([])
-                    }
-                    return
-                }
-
-
-                let parsed: unknown
-                try {
-                    parsed = JSON.parse(text)
-                } catch (err) {
-                    console.error('[TasksClient] JSON.parse failed, raw body:', text.slice(0, 5000), err)
-                    if (!ac.signal.aborted && mountedRef.current) {
-                        setError('Failed to parse JSON')
-                        setPaySelect([])
-                    }
-                }
-
-                const normalized = normalizeResponse<PaySelect>(parsed)
-                if (!ac.signal.aborted && mountedRef.current) setPaySelect(normalized)
-            } catch {
-                console.log('error')
             }
         }
 
-        fetchPSelect()
+        fetchInitialData()
 
         return () => {
             mountedRef.current = false
             ac.abort()
         }
-    }, [])
+    }, [refreshId])
 
     useEffect(() => {
         if (!paySelect || paySelect.length === 0) {
-            return
+            if (paySelect !== null) { 
+                setTasks([]);
+            }
+            return;
         }
 
         const ac = new AbortController()
@@ -131,64 +157,35 @@ export default function TasksClient(): React.ReactElement {
 
         async function fetchTasks() {
             try {
-                const weekDoneRaw = paySelect![0].week_done;
-                const date = new Date(weekDoneRaw);
-                let weekOf: string;
+                const weekOfRaw = paySelect![0].start;
+                const weekOfFormatted = formatToYyyyMmDd(weekOfRaw);
+                const route = paySelect![0].route?.trim();
 
-                if (!isNaN(date.getTime())) {
-                    const year = date.getUTCFullYear();
-                    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-                    const day = String(date.getUTCDate()).padStart(2, '0');
-                    weekOf = `${year}-${month}-${day}`;
-                } else {
-                    weekOf = weekDoneRaw;
+                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.1.50:8000').replace(/\/$/, '')
+                const url = `${API_BASE}/api/v1/payroll/task_list`
+                
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ week_of: weekOfFormatted, route: route }),
+                    signal: ac.signal, 
+                    cache: 'no-store'
+                })
+
+                if (!res.ok) throw new Error(`Task list fetch failed: ${res.status}`);
+
+                const parsed = await res.json();
+                const normalized = parsed?.tasks || [];
+                if (mountedRef.current) {
+                    setTasks(normalized);
+                    updateProgress(normalized); // Update progress when tasks are fetched
                 }
 
-                const route = paySelect![0].route;
-
-                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.12.241:8000').replace(/\/$/, '')
-                const url = `${API_BASE}/api/v1/payroll/task_list/?refresh=1&week_of=${weekOf}&route=${route}`
-                const res = await fetch(url, {signal: ac.signal, cache: 'no-store'})
-
-                const contentType = res.headers.get('content-type') || ''
-                const text = await res.text()
-
-                if (!res.ok) {
-                    if (!ac.signal.aborted && mountedRef.current) {
-                        setError(`Fetch failed: ${res.status}`)
-                        setTasks([])
-                    }
-                    return
+            } catch (err) {
+                if ((err as Error).name !== 'AbortError' && mountedRef.current) {
+                    setError((err as Error).message);
+                    setTasks([]);
                 }
-
-                if (!contentType.includes('application/json')) {
-                    if (!ac.signal.aborted && mountedRef.current) {
-                        setError('Invalid content-type, expected JSON')
-                        setTasks([])
-                    }
-                    console.log('[TasksClient] non-JSON response body (full):', text.slice(0, 5000))
-                    return
-                }
-
-                let parsed: unknown
-                try {
-                    parsed = JSON.parse(text)
-                } catch (err) {
-                    console.error('[TasksClient] JSON.parse failed, raw body:', text.slice(0, 5000), err)
-                    if (!ac.signal.aborted && mountedRef.current) {
-                        setError('Failed to parse JSON')
-                        setTasks([])
-                    }
-                    return
-                }
-
-                const normalized = normalizeResponse<Task>(parsed)
-                if (!ac.signal.aborted && mountedRef.current) setTasks(normalized)
-
-            } catch (err: unknown) {
-                const name = (err as { name?: string }).name
-                if (name === 'AbortError') return
-                if (mountedRef.current) setError(String(err))
             }
         }
 
@@ -200,27 +197,27 @@ export default function TasksClient(): React.ReactElement {
         }
     }, [paySelect])
 
+    const currentEmployeeName = useMemo(() => {
+        if (!paySelect || paySelect.length === 0 || employees.length === 0) {
+            return paySelect?.[0]?.emp_id ? String(paySelect[0].emp_id) : '';
+        }
+        const empId = paySelect[0].emp_id;
+        const employee = employees.find(e => e.id === empId);
+        return employee ? employee.name : String(empId);
+    }, [paySelect, employees]);
 
-    // keep hooks order stable — compute row keys before early returns
+
     const rowKeys = useMemo(() => {
         if (!tasks) return []
-        return tasks.map((t, i) => String(t.rec_id ?? i))
+        return tasks.map((t, i) => String(t.uid ?? i))
     }, [tasks])
-
-    const progress = useMemo(() => {
-        if (!tasks || tasks.length === 0) {
-            return 0;
-        }
-        const completedTasks = tasks.filter(t => t.done_by && t.done_by.trim() !== '').length;
-        return Math.round((completedTasks / tasks.length) * 100);
-    }, [tasks]);
 
     if (error) return <p className="p-4 text-red-600" style={{paddingLeft: '10px'}}>Error: {error}</p>
     if (tasks === null) return <p className="p-4" style={{paddingLeft: '10px'}}>Loading…</p>
     if (tasks.length === 0) return <p className="p-4" style={{paddingLeft: '10px'}}>No payroll tasks found.</p>
 
     const columns: Column[] = [
-        {key: 'rec_id', label: '', stickyLeft: false, hidden: true},
+        {key: 'uid', label: 'UID', width: '0', stickyLeft: false, hidden: true},
         {key: 'cust_id', label: 'CustID', stickyLeft: false, hidden: true},
         {
             key: 'company',
@@ -274,7 +271,6 @@ export default function TasksClient(): React.ReactElement {
             stickyLeft: false,
             hidden: true,
         },
-        {key: 'uid', label: 'UID', width: '0', stickyLeft: false, hidden: true},
         {key: 'week_done', label: 'Week Done', width: '0', stickyLeft: false, hidden: true},
         {key: 'emp_id', label: 'EmpID', width: '0', stickyLeft: false, hidden: true},
         {key: 'price', label: 'Price', width: '0', stickyLeft: false, hidden: true},
@@ -283,9 +279,22 @@ export default function TasksClient(): React.ReactElement {
         {key: 'type', label: 'Type', width: '0', stickyLeft: false, hidden: true},
     ]
 
+    const handleBlur = (uid: number) => {
+        toast(`UID: ${uid}`, 'info', 'Record Focus');
+    };
+
+    const handleTaskChange = (uid: number, field: keyof Task, value: string | number | boolean) => {
+        setTasks(prevTasks => {
+            if (!prevTasks) return null;
+            return prevTasks.map(task => 
+                task.uid === uid ? { ...task, [field]: value } : task
+            );
+        });
+    };
+
     return (
 
-        <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 h-full">
             {paySelect && paySelect.length > 0 && (
                 <div className="p-2" style={{
                     background: 'var(--background-tertiary)',
@@ -295,24 +304,19 @@ export default function TasksClient(): React.ReactElement {
                 }}>
                     <div className="flex items-center justify-between">
                         <div className="flex-shrink-0">
-                            <sub><span
-                                className="font-semibold">{paySelect[0].employee_name || paySelect[0].emp_id}: </span></sub>
-                            <sub><span>{(() => {
-                                const date = new Date(paySelect[0].week_done);
-                                if (!isNaN(date.getTime())) {
-                                    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-                                    const day = String(date.getUTCDate()).padStart(2, '0');
-                                    const year = date.getUTCFullYear();
-                                    return `${month}/${day}/${year}`;
-                                }
-                                return paySelect[0].week_done;
-                            })()}</span></sub>
+                            <sub><span className="font-semibold">{currentEmployeeName}: </span></sub>
+                            <sub><span>{paySelect[0].start}</span></sub>
                             <sub>: <span>{paySelect[0].route} Route</span></sub>
                             <sub>: <span>{paySelect[0].route_description}</span></sub>
                         </div>
-                        <div>
-                            <div className="h-4 w-full rounded-full bg-gray-200 overflow-hidden"
-                                 style={{width: '150px', height: '8px'}}>
+                        <div className="flex items-center gap-2"
+                            style={{paddingTop: '4px'}}
+                        >
+                            <div 
+                                className="relative h-4 w-full rounded-full bg-gray-200 overflow-hidden"
+                                style={{width: '150px', height: '15px'}}
+                                role="progressbar"
+                            >
                                 <div
                                     className={`h-full transition-all duration-500 ease-out bg-gradient-to-r ${
                                         progress <= 60 ? 'from-red-900 to-red-500' :
@@ -321,6 +325,11 @@ export default function TasksClient(): React.ReactElement {
                                     }`}
                                     style={{width: `${progress}%`}}
                                 ></div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-[11px] font-semibold text-black" style={{lineHeight: '8px'}}>
+                                        {progressText}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -391,7 +400,7 @@ export default function TasksClient(): React.ReactElement {
                             <tr key={rowKey}>
                                 {columns.map((col) => {
                                         const value = (task as Record<string, unknown>)[col.key]
-                                        const rawValue = col.key === 'rec_id' ? value : col.key === 'cust_id' ? value : col.key === 'company' ? value : value
+                                        const rawValue = col.key === 'uid' ? value : col.key === 'cust_id' ? value : col.key === 'company' ? value : value
 
                                         let cellContent: React.ReactNode
                                         let formattedValue: string | undefined
@@ -399,7 +408,6 @@ export default function TasksClient(): React.ReactElement {
 
                                         switch (col.key) {
                                             // General
-                                            case 'rec_id':
                                             case 'cust_id':
                                             case 'company':
                                             case 'description':
@@ -445,69 +453,42 @@ export default function TasksClient(): React.ReactElement {
 
                                             // Custom
                                             case 'done_by':
-                                                const employeeOptions = [
-                                                    {value: 'emp1', label: 'Employee 1'},
-                                                    {value: 'emp2', label: 'Employee 2'},
-                                                    {value: 'emp3', label: 'Employee 3'},
+                                                const doneByOptions = [
+                                                    { value: currentEmployeeName, label: currentEmployeeName },
+                                                    { value: 'CANCELLED', label: 'CANCELLED' },
+                                                    { value: 'NOT DONE', label: 'NOT DONE' },
+                                                    { value: '', label: '' }
                                                 ];
-                                                const currentDoneByValue = String(rawValue ?? '');
-                                                const doneByValueExists = employeeOptions.some(opt => opt.value === currentDoneByValue);
-
                                                 cellContent = (
-                                                    <select
-                                                        defaultValue={currentDoneByValue}
-                                                        aria-label={col.label}
-                                                        className={"w-full bg-transparent p-1"}
-                                                        style={{
-                                                            background: 'var(--background-tertiary)',
-                                                            color: 'var(--foreground)',
-                                                            border: '1px solid var(--border-color)'
-                                                        }}
-                                                        onChange={() => {
-                                                        }}
-                                                    >
-                                                        <option value=""></option>
-                                                        {!doneByValueExists && currentDoneByValue && (
-                                                            <option value={currentDoneByValue}>{currentDoneByValue}</option>
-                                                        )}
-                                                        {employeeOptions.map(opt => (
-                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                        ))}
-                                                    </select>
+                                                    <ComboBox
+                                                        id={`done-by-combobox-${task.uid}`}
+                                                        options={doneByOptions}
+                                                        value={String(rawValue ?? '')}
+                                                        onChange={(newValue) => handleTaskChange(task.uid, 'done_by', newValue)}
+                                                        onBlur={() => handleBlur(task.uid)}
+                                                        fontSize="9px"
+                                                        icon="arrow-down"
+                                                    />
                                                 );
                                                 break;
 
                                             case 'comment':
                                                 const commentOptions = [
+                                                    {value: '', label: ''},
                                                     {value: 'com1', label: 'Comment 1'},
                                                     {value: 'com2', label: 'Comment 2'},
                                                     {value: 'com3', label: 'Comment 3'},
                                                 ];
-                                                const currentCommentValue = String(rawValue ?? '');
-                                                const commentValueExists = commentOptions.some(opt => opt.value === currentCommentValue);
-
                                                 cellContent = (
-                                                    <select
-                                                        defaultValue={currentCommentValue}
-                                                        aria-label={col.label}
-                                                        className={"w-full bg-transparent"}
-                                                        style={{
-                                                            background: 'var(--background-tertiary)',
-                                                            color: 'var(--foreground)',
-                                                            border: '1px solid var(--border-color)'
-                                                        }}
-                                                        onChange={() => {
-                                                        }}
-                                                    >
-                                                        <option value=""></option>
-                                                        {!commentValueExists && currentCommentValue && (
-                                                            <option
-                                                                value={currentCommentValue}>{currentCommentValue}</option>
-                                                        )}
-                                                        {commentOptions.map(opt => (
-                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                        ))}
-                                                    </select>
+                                                    <ComboBox
+                                                        id={`comment-combobox-${task.uid}`}
+                                                        options={commentOptions}
+                                                        value={String(rawValue ?? '')}
+                                                        onChange={(newValue) => handleTaskChange(task.uid, 'comment', newValue)}
+                                                        onBlur={() => handleBlur(task.uid)}
+                                                        fontSize="9px"
+                                                        icon="arrow-down"
+                                                    />
                                                 );
                                                 break;
 
@@ -516,12 +497,13 @@ export default function TasksClient(): React.ReactElement {
                                                     <input
                                                         type={'text'}
                                                         value={String(rawValue ?? '')}
-                                                        readOnly
+                                                        onChange={(e) => handleTaskChange(task.uid, 'work_order', e.target.value)}
                                                         className={'w-full bg-transparent p-1'}
                                                         style={{
                                                             border: '1px solid var(--border-color)',
                                                             paddingLeft: '4px'
                                                         }}
+                                                        onBlur={() => handleBlur(task.uid)}
                                                     />
                                                 )
                                                 break
@@ -537,7 +519,6 @@ export default function TasksClient(): React.ReactElement {
                                             <td
                                                 key={col.key}
                                                 className={`${col.hidden ? 'hidden' : ''} ${col.responsiveClassName ?? ''}`}
-                                                style={{width: col.width}}
                                             >
                                                 <div title={formattedValue ?? String(rawValue ?? '')}>
                                                     {cellContent}
@@ -554,8 +535,11 @@ export default function TasksClient(): React.ReactElement {
                 </table>
             </div>
             <div style={{paddingLeft: '3px'}}>
-                <div>Showing {tasks.length} tasks</div>
-                <div className="text-sm text-gray-500">Last updated: {/* optional date */}</div>
+                <div
+                    className="text-gray-500"
+                ><sub>Showing {tasks.length} tasks</sub>
+                </div>
+                {/*<div className="text-sm text-gray-500">Last updated: /!* optional date *!/</div>*/}
             </div>
             <div className={'col-span-10 content-start'}>
                 <button className="btn btn-primary flex items-center gap-2"
@@ -583,10 +567,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -598,10 +582,10 @@ export default function TasksClient(): React.ReactElement {
                             color: 'var(--button-text)',
                             marginTop: '2px', marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -641,10 +625,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -656,10 +640,10 @@ export default function TasksClient(): React.ReactElement {
                             color: 'var(--button-text)',
                             marginTop: '2px', marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -672,10 +656,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -689,10 +673,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -705,10 +689,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -721,10 +705,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'

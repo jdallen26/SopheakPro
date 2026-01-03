@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p 3000",
+    "dev": "next dev -H 192.168.1.50 -p 3000",
     "build": "next build",
-    "start": "next start -H 0.0.0.0 -p 3000",
+    "start": "next start -H 192.168.1.50 -p 3000",
     "lint": "eslint",
-    "dev-cross": "cross-env NODE_OPTIONS=--enable-source-maps next dev -H 0.0.0.0 -p 3000",
-    "start-cross": "cross-env NODE_OPTIONS=--enable-source-maps next start -H 0.0.0.0 -p 3000"
+    "dev-cross": "cross-env NODE_OPTIONS=--enable-source-maps next dev -H 192.168.1.50 -p 3000",
+    "start-cross": "cross-env NODE_OPTIONS=--enable-source-maps next start -H 192.168.1.50 -p 3000"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",

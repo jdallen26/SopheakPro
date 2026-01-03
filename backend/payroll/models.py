@@ -2,7 +2,7 @@ from decimal import Decimal, ROUND_HALF_UP, getcontext
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MinLengthValidator
-from django.db.models import Index
+from django.db.models import Index, Model
 from django.conf import settings
 from reportlab.lib.colors import describe
 from datetime import datetime, date
@@ -26,11 +26,25 @@ class PayrollComments(models.Model):
         verbose_name_plural = 'Payroll Comments'
         managed = False
 
+class PayrollAggregate(models.Model):
+    id = models.AutoField(primary_key=True, db_column='ID')
+    week_of = models.DateTimeField(null=True, blank=True, db_column='WeekOf')
+    route = models.CharField(max_length=2, null=True, blank=True, db_column='route')
+    task_count = models.IntegerField(null=True, blank=True, db_column='Task_Count')
+    completed_count = models.IntegerField(null=True, blank=True, db_column='Completed_Count')
+    percent_complete = models.DecimalField(max_digits=19, decimal_places=2, default=Decimal('0.00'), db_column='Percent_Complete')
+
+    class Meta:
+        db_table = 'Accounting.vw_Payroll_Aggregate'
+        verbose_name = 'Payroll Aggregate'
+        verbose_name_plural = 'Payroll Aggregates'
+        managed = False
+
 
 class PayrollSites(models.Model):
     cust_id = models.CharField(max_length=10, primary_key=True, db_column='CustID')
     company = models.CharField(max_length=100, null=True, blank=True, db_column='Company')
-    wee_of = dt.parse_date_val(models.DateTimeField(null=True, blank=True, db_column='Weekof'))
+    week_of = dt.parse_date_val(models.DateTimeField(null=True, blank=True, db_column='Weekof'))
     cod = models.BooleanField(default=False, db_column='COD')
     mailto = models.BooleanField(default=False, db_column='Mailto')
     taxable = models.BooleanField(default=False, db_column='Taxable')
@@ -181,6 +195,30 @@ class PSelect(models.Model):
 
     def __str__(self):
         return f"PSelect {self.uid} (Emp: {self.emp_id})"
+
+class PSelectTable(models.Model):
+    uid = models.AutoField(primary_key=True, db_column='UID')
+    emp_id = models.CharField(max_length=50, null=True, blank=True, db_column='EmpID')
+    start = models.DateTimeField(null=True, blank=True, db_column='start')
+    end = models.DateTimeField(null=True, blank=True, db_column='End')
+    week_done = models.DateTimeField(null=True, blank=True, db_column='WeekDone')
+    oldstart = models.DateTimeField(null=True, blank=True, db_column='oldstart')
+    oldend = models.DateTimeField(null=True, blank=True, db_column='oldend')
+    forlookup = models.PositiveSmallIntegerField(null=True, blank=True, db_column='Forlookup')
+    mile_rate = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True, db_column='MileRate')
+    chk_price_paid = models.BooleanField(null=True, blank=True, db_column='ChkPricePaid')
+    reim_exp = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True, db_column='ReimExp')
+    otime_percentage = models.IntegerField(null=True, blank=True, db_column='OtimePercentage')
+    spec_equip = models.BooleanField(null=True, blank=True, db_column='SpecEquip')
+    billing_date = models.DateTimeField(null=True, blank=True, db_column='BillingDate')
+    invoice_num = models.FloatField(null=True, blank=True, db_column='InvoiceNum')
+    trav_dir = models.CharField(max_length=50, null=True, blank=True, db_column='TravDir')
+    route = models.CharField(max_length=3, null=True, blank=True, db_column='route')
+
+    class Meta:
+        db_table = 'pselect'
+        managed = False
+
 
 class PayrollWeeks(models.Model):
     row_id = models.CharField(max_length=10, primary_key=True, db_column='row_id')

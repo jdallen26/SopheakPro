@@ -17,11 +17,11 @@ const tabs = [
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general')
   const [formData, setFormData] = useState({
-    name: 'Sean Ngu',
-    username: '@seantheme',
-    phone: '+1-203-555-0183',
-    email: 'support@seantheme.com',
-    password: '••••••••••',
+    name: 'Jay Allen',
+    username: 'Admin',
+    phone: '254-661-2523',
+    email: 'cmgdirectors@gmail.com',
+    password: 'Hidden',
   })
 
   const [notifications, setNotifications] = useState({

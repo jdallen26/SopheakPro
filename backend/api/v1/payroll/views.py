@@ -4,6 +4,7 @@ import os
 import sys
 import traceback
 import json
+from datetime import datetime
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
@@ -360,8 +361,8 @@ def pselect(request):
                 'start': getattr(p, 'start_mmddyyyy', '') or '',
                 'end': getattr(p, 'end_mmddyyyy', '') or '',
                 'week_done': getattr(p, 'week_done_mmddyyyy', '') or '',
-                'old_start': getattr(p, 'olds tart_mmddyyyy', '') or '',
-                'old_end': getattr(p, 'olden_mmddyyyy', '') or '',
+                'old_start': getattr(p, 'oldstart_mmddyyyy', '') or '',
+                'old_end': getattr(p, 'oldend_mmddyyyy', '') or '',
                 'mile_rate': getattr(p, 'mile_rate', '') or '',
                 'chk_price_paid': getattr(p, 'chk_price_paid', '') or '',
                 'reim_exp': getattr(p, 'reim_exp_currency', '') or '',
@@ -464,61 +465,79 @@ def pselect_edit(request):
         return JsonResponse({'error': 'invalid uid'}, status=400)
 
     try:
-        p_model = apps.get_model('payroll', 'Pselect')
+        # Use the actual table model for updates
+        Table = apps.get_model('payroll', 'PSelectTable')
+        # Use the view model for reading back rich data
+        View = apps.get_model('payroll', 'Pselect')
     except Exception:
         return JsonResponse({'error': 'model not found'}, status=500)
 
     try:
-        r = p_model.objects.filter(uid=uid).first()
+        r = Table.objects.filter(uid=uid).first()
         if not r:
             return JsonResponse({'count': 0, 'pselect': []}, status=404)
 
-        allowed = {
-            'emp_id': int,
-            'emp_name': None,
-            'start_mmddyyyy': None,
-            'end_mmddyyyy': None,
-            'week_done_mmddyyyy': None,
-            'old_start_mmddyyyy': None,
-            'old_end_mmddyyyy': None,
-            'mile_rate': None,
-            'chk_price_paid': None,
-            'reim_exp_currency': None,
-            'otime_percentage': None,
-            'spec_equip': bool,
-            'billing_date_mmddyyyy': None,
-            'invoice_num': None,
-            'route': None,
-            'route_description': None,
-        }
+        def parse_date(val):
+            if not val: return None
+            try:
+                return datetime.strptime(val, '%m/%d/%Y')
+            except ValueError:
+                return None
 
-        for key, caster in allowed.items():
-            if key in payload:
-                val = payload[key]
-                try:
-                    if caster is int:
-                        setattr(r, key, int(val) if val is not None and val != '' else None)
-                    elif caster is bool:
-                        # accept truthy values
-                        setattr(r, key, bool(val))
-                    else:
-                        setattr(r, key, val)
-                except Exception:
-                    # skip invalid casting for a single field
-                    continue
+        # Map payload fields to model fields
+        if 'emp_id' in payload:
+            val = payload['emp_id']
+            r.emp_id = str(val) if val is not None and val != '' else None
+        
+        if 'start' in payload:
+            r.start = parse_date(payload['start'])
+        if 'end' in payload:
+            r.end = parse_date(payload['end'])
+        if 'week_done' in payload:
+            r.week_done = parse_date(payload['week_done'])
+        if 'old_start' in payload:
+            r.oldstart = parse_date(payload['old_start'])
+        if 'old_end' in payload:
+            r.oldend = parse_date(payload['old_end'])
+        if 'billing_date' in payload:
+            r.billing_date = parse_date(payload['billing_date_mmddyyyy'])
+
+        if 'mile_rate' in payload:
+            r.mile_rate = payload['mile_rate']
+        if 'chk_price_paid' in payload:
+            r.chk_price_paid = validate_bool(payload['chk_price_paid'])
+        
+        if 'reim_exp_currency' in payload:
+            val = str(payload['reim_exp_currency']).replace('$', '').replace(',', '')
+            r.reim_exp = val if val else None
+            
+        if 'otime_percentage' in payload:
+            r.otime_percentage = payload['otime_percentage']
+        if 'spec_equip' in payload:
+            r.spec_equip = validate_bool(payload['spec_equip'])
+        if 'invoice_num' in payload:
+            r.invoice_num = payload['invoice_num']
+        if 'route' in payload:
+            r.route = payload['route']
 
         r.save()
+        
+        # Fetch the view record to return rich data (names, descriptions, etc)
+        view_rec = View.objects.filter(uid=uid).first()
 
         def _fmt_pselect(p):
+            eid = getattr(p, 'emp_id', None)
+            if eid == '':
+                eid = None
             return {
                 'uid': getattr(p, 'uid', None),
-                'emp_id': int(getattr(p, 'emp_id', None)) if getattr(p, 'emp_id', None) is not None else None,
+                'emp_id': int(eid) if eid is not None else None,
                 'emp_name': getattr(p, 'emp_name', '') or '',
                 'start': getattr(p, 'start_mmddyyyy', '') or '',
                 'end': getattr(p, 'end_mmddyyyy', '') or '',
                 'week_done': getattr(p, 'week_done_mmddyyyy', '') or '',
-                'old_start': getattr(p, 'old_start_mmddyyyy', '') or '',
-                'old_end': getattr(p, 'old_end_mmddyyyy', '') or '',
+                'old_start': getattr(p, 'oldstart_mmddyyyy', '') or '',
+                'old_end': getattr(p, 'oldend_mmddyyyy', '') or '',
                 'mile_rate': getattr(p, 'mile_rate', '') or '',
                 'chk_price_paid': getattr(p, 'chk_price_paid', '') or '',
                 'reim_exp': getattr(p, 'reim_exp_currency', '') or '',
@@ -530,10 +549,47 @@ def pselect_edit(request):
                 'route_description': getattr(p, 'route_description', '') or ''
             }
 
-        return JsonResponse({'count': 1, 'pselect': [_fmt_pselect(r)]})
-    except Exception:
-        return JsonResponse({'error': 'update failed'}, status=500)
+        return JsonResponse({'count': 1, 'pselect': [_fmt_pselect(view_rec)]})
+    except Exception as e:
+        return JsonResponse({'error': f'update failed: {str(e)}'}, status=500)
 
+@csrf_exempt
+@require_POST
+def payroll_aggregate(request):
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
+    filters = {}
+    week_of = payload.get('week_of')
+    route = payload.get('route')
+    limit = int(payload.get('limit', MAX_RECORDS))
+
+    if week_of:
+        filters['week_of'] = week_of
+    if route:
+        filters['route__iexact'] = route
+
+    try:
+        Model = apps.get_model('payroll', 'PayrollAggregate')
+        qs = Model.objects.filter(**filters) if filters else Model.objects.all()
+        qs = qs[:limit]
+
+        def _fmt(agg):
+            return {
+                'week_of': agg.week_of,
+                'route': agg.route,
+                'task_count': agg.task_count,
+                'completed_count': agg.completed_count,
+                'percent_complete': f"{agg.percent_complete:.2f}%" if agg.percent_complete is not None else "0.00%"
+            }
+        
+        data = [_fmt(agg) for agg in qs]
+        return JsonResponse({'count': len(data), 'data': data})
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 @require_GET
 def debug_payroll_model(request):

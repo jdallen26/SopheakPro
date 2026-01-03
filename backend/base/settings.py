@@ -114,8 +114,7 @@ MIGRATION_MODULES = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://192.168.12.142:3000",
-    "http://192.168.12.241:3000",
+    "http://192.168.1.50:3000",
 ]
 
 # OR for quick local testing only (not recommended for production):

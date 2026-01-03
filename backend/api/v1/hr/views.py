@@ -18,38 +18,47 @@ from base.settings import CACHE_TTL, MAX_RECORDS
 from utils.types import validate_bool
 
 
-@require_GET
+@csrf_exempt
+@require_POST
 def employees(request):
     """
-    GET /employees
+    POST /employees
     Supports: q, id|emp_id, name, company, city, state, employed, refresh, cache-control, count_only
     """
-    q = request.GET.get('q', '').strip()
-    filters = {}
-    refresh = request.GET.get('refresh') in ('1', 'true', 'True')
-    cc = request.META.get('HTTP_CACHE_CONTROL', request.GET.get('cache-Control', ''))
-    count_only = request.GET.get('count_only', '0') in ('1', 'true', 'True')
-    limit = int(request.GET.get('limit', MAX_RECORDS))
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
 
-    emp_id = request.GET.get('id', '') or request.GET.get('emp_id', '')
-    name = request.GET.get('name', '')
-    company = request.GET.get('company', '')
-    employed = validate_bool(request.GET.get('employed', ''))
-    status = request.GET.get('status', '')
-    hourly = request.GET.get('hourly', '')
-    address1 = request.GET.get('address1', '')
-    address2 = request.GET.get('address2', '')
-    city = request.GET.get('city', '')
-    state = request.GET.get('state', '')
-    zip_code = request.GET.get('zip', '')
-    cell = request.GET.get('cell', '')
-    phone = request.GET.get('phone', '')
-    start_date = request.GET.get('start_date', '')
-    end_date = request.GET.get('end_date', '')
-    driver = validate_bool(request.GET.get('driver', ''))
-    subcontractor = validate_bool(request.GET.get('subcontractor', ''))
-    is_1099 = validate_bool(request.GET.get('is_1099', ''))
-    email = request.GET.get('email', '')
+    q = str(payload.get('q', '')).strip()
+    filters = {}
+    refresh = payload.get('refresh') in (True, '1', 'true', 'True')
+    cc = request.META.get('HTTP_CACHE_CONTROL', '')
+    count_only = validate_bool(payload.get('count_only'))
+    limit = int(payload.get('limit', MAX_RECORDS))
+
+    emp_id = payload.get('id', '') or payload.get('emp_id', '')
+    name = payload.get('name', '')
+    company = payload.get('company', '')
+    
+    # Use explicit get without default to allow None
+    employed = validate_bool(payload.get('employed'))
+    
+    status = payload.get('status', '')
+    hourly = payload.get('hourly', '')
+    address1 = payload.get('address1', '')
+    address2 = payload.get('address2', '')
+    city = payload.get('city', '')
+    state = payload.get('state', '')
+    zip_code = payload.get('zip', '')
+    cell = payload.get('cell', '')
+    phone = payload.get('phone', '')
+    start_date = payload.get('start_date', '')
+    end_date = payload.get('end_date', '')
+    driver = validate_bool(payload.get('driver'))
+    subcontractor = validate_bool(payload.get('subcontractor'))
+    is_1099 = validate_bool(payload.get('is_1099'))
+    email = payload.get('email', '')
     cache_key = None
 
     if emp_id:
@@ -95,12 +104,20 @@ def employees(request):
         refresh = True
         cache_key = 'hr_employees_v1_all'
 
-    if refresh and cache.get(cache_key) is not None:
+    # Logic fix: If refresh is True, we usually want to fetch from DB, not cache.
+    # But if we are using a shared cache key 'hr_employees_v1_all', maybe we want to use it?
+    # The original logic was: if refresh and cache has data, use it. This is weird.
+    # I will change it to: if NOT refresh, try cache.
+    
+    data = None
+    if not refresh and cache_key:
         data = cache.get(cache_key)
-    else:
-        data = None
 
     if data is not None:
+        # Filter cached data in Python
+        if employed is not None:
+             data = [e for e in data if e.get('employed') == employed]
+             
         if q:
             ql = q.lower()
             data = [
@@ -110,6 +127,9 @@ def employees(request):
                    or ql in (e.get('company') or '').lower()
                    or ql in (e.get('email') or '').lower()
             ]
+        # Apply limit to cached data
+        if limit and len(data) > limit:
+            data = data[:limit]
     else:
         try:
             try:
@@ -120,7 +140,7 @@ def employees(request):
             if Model is None:
                 data = []
             else:
-                qs = Model.objects.filter(**filters) if filters else Model.objects.all()[:limit]
+                qs = Model.objects.filter(**filters) if filters else Model.objects.all()
 
                 if q:
                     if q.isdigit():
@@ -136,6 +156,9 @@ def employees(request):
                             Q(email__icontains=q) |
                             Q(city__icontains=q)
                         )
+                
+                # Apply limit
+                qs = qs[:limit]
 
                 def _fmt_employee(e):
                     return {
@@ -179,8 +202,15 @@ def employees(request):
         except Exception:
             data = []
 
-        if refresh or cache_key is not None:
-            cache.set(cache_key, data, CACHE_TTL)
+        if (refresh or cache_key is not None) and cache_key:
+            # Only cache if we have a key (which implies we are caching 'all' or a specific set)
+            # But here we only set cache_key if headers are present.
+            # And if we filtered by 'employed' in DB, we shouldn't cache it as 'all'.
+            # So we should only cache if filters is empty (except maybe q? no, q filters too).
+            
+            # If we have filters, we shouldn't update the 'all' cache with filtered data.
+            if not filters and not q:
+                 cache.set(cache_key, data, CACHE_TTL)
 
     if count_only:
         return JsonResponse({'count': len(data)})
@@ -188,24 +218,31 @@ def employees(request):
     return JsonResponse({'count': len(data), 'employees': data})
 
 
-@require_GET
+@csrf_exempt
+@require_POST
 # /notes
 def notes(request):
     # Not implemented yet
     return JsonResponse(
         {
-            "type": "FeatureCollection",
-            "features": []
+            "success": True,
+            "status": 200,
+            "feature": "Geo Data",
+            "Message:": "Not Yet Implemented"
         }
     )
 
 
+@csrf_exempt
+@require_POST
 # /goe
 def geo(request):
     return JsonResponse(
         {
-            "type": "FeatureCollection",
-            "features": []
+            "success": True,
+            "status": 200,
+            "feature": "Geo Data",
+            "Message:": "Not Yet Implemented"
         }
     )
 
@@ -434,7 +471,8 @@ def delete_employee(request, emp_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-@require_GET
+@csrf_exempt
+@require_POST
 def debug_hr_model(request):
     info = {}
     # environment

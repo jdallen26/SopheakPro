@@ -8,7 +8,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
 CREATE VIEW [dbo].[vw_Payroll_Sites] as
 SELECT DISTINCT mi.CustID,
                 s.Company,
@@ -23,18 +22,19 @@ FROM MonthlyInvoice AS mi
          LEFT JOIN Site AS s on mi.CustID = s.CustID
 UNION
 SELECT DISTINCT s.CustID,
-       s.Company,
-       s.cod AS COD,
-       s.Mailto,
-       s.Taxable,
-       s.Voucher,
-       s.OtherBill,
-       s.AdvBill,
-       0     AS [InMonthly]
+                s.Company,
+                s.cod AS COD,
+                s.Mailto,
+                s.Taxable,
+                s.Voucher,
+                s.OtherBill,
+                s.AdvBill,
+                0     AS [InMonthly]
 FROM [Site] AS s
 WHERE s.Active = 1
   AND s.CustID NOT IN (SELECT [CustID] FROM MonthlyInvoice)
-WHERE mi.CustID IS NOT NULL
+  AND s.CustID NOT IN ('', NULL)
+  And s.Company NOT IN ('', NULL)
 GO
 
 CREATE view [dbo].[vw_Payroll_Comments] as
@@ -49,39 +49,39 @@ FROM (SELECT mi.[comment]
       HAVING count(hi.[comment]) >= 100) t
 GO
 
-CREATE VIEW [dbo].[vw_Payroll_Sites] as
-SELECT DISTINCT mi.CustID,
-                s.Company,
-                mi.Weekof,
-                s.cod AS COD,
-                s.Mailto,
-                s.Taxable,
-                s.Voucher,
-                s.OtherBill,
-                s.AdvBill,
-                1     AS [InMonthly]
-FROM MonthlyInvoice AS mi
-         LEFT JOIN Site AS s on mi.CustID = s.CustID
-UNION
-SELECT s.CustID,
-       s.Company,
-       null AS weekof,
-       s.cod AS COD,
-       s.Mailto,
-       s.Taxable,
-       s.Voucher,
-       s.OtherBill,
-       s.AdvBill,
-       0     AS [InMonthly]
-FROM [Site] AS s
-WHERE s.Active = 1
-  AND s.CustID NOT IN (SELECT [CustID] FROM MonthlyInvoice)
-GO
-
 CREATE VIEW [dbo].[vw_Payroll_Payroll_Weeks]
 AS
-	SELECT ROW_NUMBER() OVER (ORDER BY Weekdone) AS row_id, Weekdone as payroll_week, COUNT([weekDone]) AS task_count
-	FROM MonthlyInvoice
-	WHERE Weekdone >= DATEADD(DAY, -365, GETDATE())
-	GROUP BY Weekdone
+SELECT ROW_NUMBER() OVER (ORDER BY Weekdone) AS row_id, Weekdone as payroll_week, COUNT([weekDone]) AS task_count
+FROM MonthlyInvoice
+WHERE Weekdone >= DATEADD(DAY, -365, GETDATE())
+GROUP BY Weekdone
+GO
+
+CREATE VIEW [Accounting].[vw_Payroll_Aggregate]
+AS
+SELECT m.WeekOf,
+       [route],
+       COUNT(*)                                                        AS [Task_Count],
+       COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) AS [Completed_Count],
+       -- Percent Complete Calculation
+       CAST(COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) * 100.0
+           / NULLIF(COUNT(*), 0) AS DECIMAL(10, 2))                    AS [Percent_Complete]
+FROM MonthlyInvoice AS m
+GROUP BY WeekOf, Route
+
+GO
+CREATE VIEW [Accounting].[vw_Payroll_Aggregate]
+AS
+    SELECT
+        ROW_NUMBER() OVER (ORDER BY m.WeekOf, [route]) AS [ID],
+        m.WeekOf,
+        [route],
+        COUNT(*) AS [Task_Count],
+        COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) AS [Completed_Count],
+        -- Percent Complete Calculation
+        CAST(COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) * 100.0
+             / NULLIF(COUNT(*), 0) AS DECIMAL(10, 2)) AS [Percent_Complete]
+    FROM MonthlyInvoice AS m
+    GROUP BY WeekOf, Route
+
 GO

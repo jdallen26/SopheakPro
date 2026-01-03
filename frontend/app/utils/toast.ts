@@ -1,10 +1,10 @@
-import { useToastStore } from '@/app/store/toast-store';
+import { useToastStore, ToastVariant } from '@/app/store/toast-store';
 
 /**
  * Shows a toast notification immediately.
  */
-export const toast = (data: any) => {
-  useToastStore.getState().showToast(data);
+export const toast = (data: any, variant?: ToastVariant, title?: string) => {
+  useToastStore.getState().showToast(data, variant, title);
 };
 
 /**
