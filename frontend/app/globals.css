@@ -175,15 +175,37 @@ body {
     color: #ffffff;
 }
 
-.bg-teal { background: var(--teal) !important; }
-.bg-blue { background: #348fe2 !important; }
-.bg-orange { background: #f59c1a !important; }
-.bg-red { background: #ff5b57 !important; }
-.bg-green { background: #00acac !important; }
-.bg-purple { background: #727cb6 !important; }
-.bg-dark { background: #2d353c !important; }
+.bg-teal {
+    background: var(--teal) !important;
+}
 
-.text-teal { color: var(--teal) !important; }
+.bg-blue {
+    background: #348fe2 !important;
+}
+
+.bg-orange {
+    background: #f59c1a !important;
+}
+
+.bg-red {
+    background: #ff5b57 !important;
+}
+
+.bg-green {
+    background: #00acac !important;
+}
+
+.bg-purple {
+    background: #727cb6 !important;
+}
+
+.bg-dark {
+    background: #2d353c !important;
+}
+
+.text-teal {
+    color: var(--teal) !important;
+}
 
 .btn {
     display: inline-flex;
@@ -260,6 +282,7 @@ hr {
     max-height: 12px;
     font-size: 10px;
 }
+
 .data-table tbody td,
 .data-table tbody th {
     padding-top: 4px;
@@ -337,10 +360,25 @@ hr {
     border-radius: 3px;
 }
 
-.badge-teal { background: var(--teal); color: white; }
-.badge-blue { background: #348fe2; color: white; }
-.badge-orange { background: #f59c1a; color: white; }
-.badge-red { background: #ff5b57; color: white; }
+.badge-teal {
+    background: var(--teal);
+    color: white;
+}
+
+.badge-blue {
+    background: #348fe2;
+    color: white;
+}
+
+.badge-orange {
+    background: #f59c1a;
+    color: white;
+}
+
+.badge-red {
+    background: #ff5b57;
+    color: white;
+}
 
 .form-control {
     display: block;
@@ -406,4 +444,10 @@ hr {
 
 .kanban-card:active {
     cursor: grabbing;
+}
+
+.popup-shell {
+    padding: 6px;
+
+
 }

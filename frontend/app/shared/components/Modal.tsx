@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+import React, { useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 
 interface ModalProps {
   isOpen: boolean;
@@ -9,29 +11,43 @@ interface ModalProps {
 }
 
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer }) => {
+  const [isBrowser, setIsBrowser] = useState(false);
+
+  useEffect(() => {
+    setIsBrowser(true);
+  }, []);
+
   if (!isOpen) {
     return null;
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-card text-card-foreground rounded-lg shadow-lg w-1/2 max-w-4xl">
-        <div className="p-4 border-b border-border">
-          <h2 className="text-xl font-semibold">{title}</h2>
-          <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800">
+  const modalContent = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-[var(--card-bg)] text-[var(--foreground)] rounded-lg shadow-lg w-full max-w-[600px] border border-[var(--border-color)]">
+        <div className="px-6 border-b border-[var(--border-color)] flex justify-between items-center popup-shell">
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <button onClick={onClose} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)]">
             &times;
           </button>
         </div>
-        <div className="p-4 max-h-[60vh] overflow-y-auto">
+        <div className="px-6 py-4 max-h-[60vh] overflow-y-auto popup-shell">
           {children}
         </div>
-        <div className="p-4 border-t border-border flex justify-end space-x-2">
+        <div className="px-6 py-4 border-t border-[var(--border-color)] flex justify-end space-x-2 popup-shell">
           {footer}
         </div>
       </div>
     </div>
   );
+
+  if (isBrowser) {
+    const modalRoot = document.getElementById('modal-root');
+    if (modalRoot) {
+      return ReactDOM.createPortal(modalContent, modalRoot);
+    }
+  }
+
+  return null;
 };
 
 export default Modal;
-

@@ -6,6 +6,7 @@ import sys
 import traceback
 
 from django.apps import apps
+from django.contrib.admin.checks import refer_to_missing_field
 from django.core.cache import cache
 from django.db.models import Q
 from django.http import JsonResponse
@@ -28,6 +29,7 @@ def employees(request):
     refresh = request.GET.get('refresh') in ('1', 'true', 'True')
     cc = request.META.get('HTTP_CACHE_CONTROL', request.GET.get('cache-Control', ''))
     count_only = request.GET.get('count_only', '0') in ('1', 'true', 'True')
+    limit = int(request.GET.get('limit', MAX_RECORDS))
 
     emp_id = request.GET.get('id', '') or request.GET.get('emp_id', '')
     name = request.GET.get('name', '')
@@ -39,7 +41,7 @@ def employees(request):
     address2 = request.GET.get('address2', '')
     city = request.GET.get('city', '')
     state = request.GET.get('state', '')
-    zip = request.GET.get('zip', '')
+    zip_code = request.GET.get('zip', '')
     cell = request.GET.get('cell', '')
     phone = request.GET.get('phone', '')
     start_date = request.GET.get('start_date', '')
@@ -70,8 +72,8 @@ def employees(request):
         filters['city__icontains'] = city
     if state:
         filters['state__iexact'] = state
-    if zip:
-        filters['zip__icontains'] = zip
+    if zip_code:
+        filters['zip__icontains'] = zip_code
     if cell:
         filters['cell__icontains'] = cell
     if phone:
@@ -118,7 +120,7 @@ def employees(request):
             if Model is None:
                 data = []
             else:
-                qs = Model.objects.filter(**filters) if filters else Model.objects.all()[:MAX_RECORDS]
+                qs = Model.objects.filter(**filters) if filters else Model.objects.all()[:limit]
 
                 if q:
                     if q.isdigit():
@@ -177,7 +179,7 @@ def employees(request):
         except Exception:
             data = []
 
-        if not q and not refresh:
+        if refresh or cache_key is not None:
             cache.set(cache_key, data, CACHE_TTL)
 
     if count_only:

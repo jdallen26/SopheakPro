@@ -3,27 +3,34 @@ import importlib
 import os
 import sys
 import traceback
+import json
 
-from django.db.models import Q
-from django.http import JsonResponse, HttpResponse
-from django.views.decorators.http import require_GET
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.core.cache import cache
 from django.apps import apps
-from rest_framework.response import Response
 
 from base import settings
 from base.settings import CACHE_TTL, MAX_RECORDS
 from utils.types import validate_bool
 
 
-@require_GET
+@csrf_exempt
+@require_POST
 def comments(request):
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
     filters = {}
-    q = request.GET.get('q', '').strip()
-    comment = request.GET.get('comment', '').strip()
-    refresh = request.GET.get('refresh') in ('1', 'true', 'True')
-    cc = request.META.get('HTTP_CACHE_CONTROL', request.GET.get('cache-Control', ''))
-    count_only = request.GET.get('count_only', '0') in ('1', 'true', 'True')
+    q = str(payload.get('q', '')).strip()
+    comment = str(payload.get('comment', '')).strip()
+    refresh = payload.get('refresh') in (True, '1', 'true', 'True')
+    cc = request.META.get('HTTP_CACHE_CONTROL', '')
+    count_only = validate_bool(payload.get('count_only'))
+    limit = int(payload.get('limit', MAX_RECORDS))
 
     if comment not in ('', None):
         filters['comment__icontains'] = comment
@@ -47,7 +54,10 @@ def comments(request):
             if Model is None:
                 return JsonResponse({'count': len(data)})
 
-            qs = Model.objects.filter(**filters) if filters else Model.objects.all()[:MAX_RECORDS]
+            qs = Model.objects.filter(**filters) if filters else Model.objects.all()
+            
+            # Apply limit
+            qs = qs[:limit]
 
             def _fmt_comment(c):
                 return {
@@ -68,19 +78,37 @@ def comments(request):
     return JsonResponse({'count': len(data), 'comments': data})
 
 
-@require_GET
+@csrf_exempt
+@require_POST
 # /sites
 def sites(request):
-    q = request.GET.get('q', '').strip()
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
+    q = str(payload.get('q', '')).strip()
     filters = {}
-    refresh = request.GET.get('refresh') in ('1', 'true', 'True')
-    cc = request.META.get('HTTP_CACHE_CONTROL', request.GET.get('cache-Control', ''))
-    cust_id = request.GET.get('cust_id', '')
-    company = request.GET.get('company', '')
-    in_monthly = validate_bool(request.GET.get('in_monthly', ''))
-    show_all = validate_bool(request.GET.get('show_all', '0') in ('1', 'true', 'True'))
-    count_only = validate_bool(request.GET.get('count_only', '0') in ('1', 'true', 'True'))
-    limit = int(request.GET.get('limit', MAX_RECORDS))
+    refresh = payload.get('refresh') in (True, '1', 'true', 'True')
+    cc = request.META.get('HTTP_CACHE_CONTROL', '')
+    cust_id = payload.get('cust_id', '')
+    company = payload.get('company', '')
+    taxable = validate_bool(payload.get('taxable', ''))
+    in_monthly = validate_bool(payload.get('in_monthly', ''))
+    
+    show_all_val = payload.get('show_all', False)
+    if isinstance(show_all_val, str):
+        show_all = validate_bool(show_all_val.lower() in ('1', 'true'))
+    else:
+        show_all = validate_bool(show_all_val)
+
+    count_only_val = payload.get('count_only', False)
+    if isinstance(count_only_val, str):
+        count_only = validate_bool(count_only_val.lower() in ('1', 'true'))
+    else:
+        count_only = validate_bool(count_only_val)
+        
+    limit = int(payload.get('limit', MAX_RECORDS))
 
     if cust_id not in ('', None):
         filters['cust_id'] = cust_id
@@ -90,6 +118,10 @@ def sites(request):
     if in_monthly:
         filters['in_monthly'] = in_monthly
 
+    if taxable:
+        filters['taxable'] = taxable
+
+    # Caching
     if 'no-cache' in cc or 'max-age=0' in cc:
         refresh = True
 
@@ -104,6 +136,9 @@ def sites(request):
             ql = q.lower()
             data = [d for d in data if
                     ql in (d.get('company', '') or '').lower() or ql in str(d.get('cust_id', '')).lower()]
+        # Apply limit to cached data if needed (though cache usually stores full set, slicing list is cheap)
+        if limit and len(data) > limit:
+            data = data[:limit]
     else:
         try:
             # Try likely model names and app labels to avoid LookupError
@@ -124,9 +159,12 @@ def sites(request):
                 # model is not registered; return empty consistent response
                 data = []
             else:
-                qs = model.objects.filter(**filters) if filters else model.objects.all()[:limit]
+                qs = model.objects.filter(**filters) if filters else model.objects.all()
                 if q:
                     qs = qs.filter(company__icontains=q) | qs.filter(cust_id__icontains=q)
+                
+                # Apply limit
+                qs = qs[:limit]
 
                 data = [{
                     'cust_id': site.cust_id,
@@ -153,12 +191,19 @@ def sites(request):
 
 
 # Used in the Insert Entry popup
-@require_GET
+@csrf_exempt
+@require_POST
 def insert_entry_task_selection(request):
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
     filters = {}
-    count_only = validate_bool(request.GET.get('count_only'))
-    q = request.GET.get('q', '').strip()
-    cust_id = request.GET.get('cust_id', '').strip()
+    count_only = validate_bool(payload.get('count_only'))
+    q = str(payload.get('q', '')).strip()
+    cust_id = str(payload.get('cust_id', '')).strip()
+    limit = int(payload.get('limit', MAX_RECORDS))
 
     if cust_id not in ('', None):
         filters['cust_id__iexact'] = cust_id
@@ -175,7 +220,10 @@ def insert_entry_task_selection(request):
     except Exception:
         return JsonResponse({'count': 0, 'tasks': []})
 
-    qs = Tasks.objects.filter(**filters) if filters else Tasks.objects.all()[:MAX_RECORDS]
+    qs = Tasks.objects.filter(**filters) if filters else Tasks.objects.all()
+    
+    # Apply limit
+    qs = qs[:limit]
 
     def _fmt_task(t):
         return {
@@ -193,16 +241,21 @@ def insert_entry_task_selection(request):
     return JsonResponse({'count': len(data), 'tasks': data})
 
 
-@require_GET
+@csrf_exempt
+@require_POST
 # /task_list
 def task_list(request):
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
     filters = {}
-    q = request.GET.get('q', '').strip()
-    cust_id = request.GET.get('cust_id', '').strip()
-    route = request.GET.get('route', '').strip()
-    week_of = request.GET.get('week_of', '').strip()
-    count_only = validate_bool(request.GET.get('count_only'))
-    limit = int(request.GET.get('limit', MAX_RECORDS))
+    cust_id = str(payload.get('cust_id', '')).strip()
+    route = str(payload.get('route', '')).strip()
+    week_of = str(payload.get('week_of', '')).strip()
+    count_only = validate_bool(payload.get('count_only'))
+    limit = int(payload.get('limit', MAX_RECORDS))
 
     # Builtin filters
     if cust_id not in ('', None):
@@ -262,11 +315,19 @@ def task_list(request):
     return JsonResponse({'count': len(data), 'tasks': data})
 
 
-@require_GET
+@csrf_exempt
+@require_POST
 # /pselect
 def pselect(request):
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
     filters = {}
-    psid = request.GET.get('psid', '')
+    psid = payload.get('psid', '')
+    limit = int(payload.get('limit', MAX_RECORDS))
+
     # Build filters (respect the presence of params)
     if psid not in ('', None):
         try:
@@ -286,7 +347,10 @@ def pselect(request):
         except (ValueError, TypeError):
             return JsonResponse({'count': 0, 'pselect': []})
 
-        p_rec = p_model.objects.filter(**filters) if filters else p_model.objects.all()[:MAX_RECORDS]
+        p_rec = p_model.objects.filter(**filters) if filters else p_model.objects.all()
+        
+        # Apply limit
+        p_rec = p_rec[:limit]
 
         def _fmt_task(p):
             return {
@@ -317,9 +381,15 @@ def pselect(request):
 
 
 # python
-@require_GET
+@csrf_exempt
+@require_POST
 def payroll_weeks(request):
-    limit = int(request.GET.get('limit', MAX_RECORDS))
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
+    limit = int(payload.get('limit', MAX_RECORDS))
 
     try:
         PayrollWeeks = apps.get_model('payroll', 'PayrollWeeks')
@@ -368,12 +438,108 @@ def payroll_weeks(request):
     return JsonResponse({'count': len(data), 'weeks': data})
 
 
+@csrf_exempt
+@require_POST
+def pselect_edit(request):
+    """
+    POST-JSON body to update a Pselect record.
+    Required: uid
+    Allowed fields (if present) will be updated:
+      emp_id, emp_name, start_mmddyyyy, end_mmddyyyy, week_done_mmddyyyy,
+      old_start_mmddyyyy, old_end_mmddyyyy, mile_rate, chk_price_paid,
+      reim_exp_currency, otime_percentage, spec_equip, billing_date_mmddyyyy,
+      invoice_num, route, route_description
+    """
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'error': 'invalid json'}, status=400)
+
+    uid = payload.get('uid') or request.POST.get('uid')
+    if uid is None:
+        return JsonResponse({'error': 'missing uid'}, status=400)
+    try:
+        uid = int(uid)
+    except Exception:
+        return JsonResponse({'error': 'invalid uid'}, status=400)
+
+    try:
+        p_model = apps.get_model('payroll', 'Pselect')
+    except Exception:
+        return JsonResponse({'error': 'model not found'}, status=500)
+
+    try:
+        r = p_model.objects.filter(uid=uid).first()
+        if not r:
+            return JsonResponse({'count': 0, 'pselect': []}, status=404)
+
+        allowed = {
+            'emp_id': int,
+            'emp_name': None,
+            'start_mmddyyyy': None,
+            'end_mmddyyyy': None,
+            'week_done_mmddyyyy': None,
+            'old_start_mmddyyyy': None,
+            'old_end_mmddyyyy': None,
+            'mile_rate': None,
+            'chk_price_paid': None,
+            'reim_exp_currency': None,
+            'otime_percentage': None,
+            'spec_equip': bool,
+            'billing_date_mmddyyyy': None,
+            'invoice_num': None,
+            'route': None,
+            'route_description': None,
+        }
+
+        for key, caster in allowed.items():
+            if key in payload:
+                val = payload[key]
+                try:
+                    if caster is int:
+                        setattr(r, key, int(val) if val is not None and val != '' else None)
+                    elif caster is bool:
+                        # accept truthy values
+                        setattr(r, key, bool(val))
+                    else:
+                        setattr(r, key, val)
+                except Exception:
+                    # skip invalid casting for a single field
+                    continue
+
+        r.save()
+
+        def _fmt_pselect(p):
+            return {
+                'uid': getattr(p, 'uid', None),
+                'emp_id': int(getattr(p, 'emp_id', None)) if getattr(p, 'emp_id', None) is not None else None,
+                'emp_name': getattr(p, 'emp_name', '') or '',
+                'start': getattr(p, 'start_mmddyyyy', '') or '',
+                'end': getattr(p, 'end_mmddyyyy', '') or '',
+                'week_done': getattr(p, 'week_done_mmddyyyy', '') or '',
+                'old_start': getattr(p, 'old_start_mmddyyyy', '') or '',
+                'old_end': getattr(p, 'old_end_mmddyyyy', '') or '',
+                'mile_rate': getattr(p, 'mile_rate', '') or '',
+                'chk_price_paid': getattr(p, 'chk_price_paid', '') or '',
+                'reim_exp': getattr(p, 'reim_exp_currency', '') or '',
+                'otime_percentage': getattr(p, 'otime_percentage', '') or '',
+                'spec_equip': bool(getattr(p, 'spec_equip', False)),
+                'billing_date': getattr(p, 'billing_date_mmddyyyy', '') or '',
+                'invoice_num': getattr(p, 'invoice_num', '') or '',
+                'route': getattr(p, 'route', '') or '',
+                'route_description': getattr(p, 'route_description', '') or ''
+            }
+
+        return JsonResponse({'count': 1, 'pselect': [_fmt_pselect(r)]})
+    except Exception:
+        return JsonResponse({'error': 'update failed'}, status=500)
+
+
 @require_GET
 def debug_payroll_model(request):
-    info = {}
+    info = {'DJANGO_SETTINGS_MODULE': os.environ.get('DJANGO_SETTINGS_MODULE'),
+            'INSTALLED_APPS_contains_payroll': 'payroll' in getattr(settings, 'INSTALLED_APPS', [])}
     # environment
-    info['DJANGO_SETTINGS_MODULE'] = os.environ.get('DJANGO_SETTINGS_MODULE')
-    info['INSTALLED_APPS_contains_payroll'] = 'payroll' in getattr(settings, 'INSTALLED_APPS', [])
     # app config
     try:
         app_cfg = apps.get_app_config('payroll')

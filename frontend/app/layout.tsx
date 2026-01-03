@@ -4,8 +4,8 @@ import ThemeProvider from "@/app/components/ThemeProvider"
 import React from "react"
 import type { Metadata } from "next"
 import Header from "@/app/shared/Header"
-import Footer from "@/app/shared/Footer"
 import Sidebar from "@/app/shared/Sidebar"
+import Toast from "@/app/shared/components/Toast"
 
 export const metadata: Metadata = {
   title: "Color Admin - Sopheak",
@@ -29,6 +29,8 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <ClientVendors />
+          <Toast />
+          <div id="modal-root"></div>
           <div className="h-screen flex overflow-hidden">
             <Sidebar />
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -42,7 +44,6 @@ export default function RootLayout({
               >
                 {children}
               </main>
-              {/*<Footer />*/}
             </div>
           </div>
         </ThemeProvider>

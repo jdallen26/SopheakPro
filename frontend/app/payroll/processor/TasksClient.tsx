@@ -45,8 +45,8 @@ interface PaySelect {
     spec_equip: boolean
     billing_date: string
     invoice_num: number
-    route: string
-    route_description: string
+    route: string;
+    route_description: string; // Added to match API response
 }
 
 type Column = {
@@ -295,7 +295,8 @@ export default function TasksClient(): React.ReactElement {
                 }}>
                     <div className="flex items-center justify-between">
                         <div className="flex-shrink-0">
-                            <sub><span className="font-semibold">{paySelect[0].employee_name || paySelect[0].emp_id}: </span></sub>
+                            <sub><span
+                                className="font-semibold">{paySelect[0].employee_name || paySelect[0].emp_id}: </span></sub>
                             <sub><span>{(() => {
                                 const date = new Date(paySelect[0].week_done);
                                 if (!isNaN(date.getTime())) {
@@ -462,7 +463,8 @@ export default function TasksClient(): React.ReactElement {
                                                             color: 'var(--foreground)',
                                                             border: '1px solid var(--border-color)'
                                                         }}
-                                                        onChange={() => {}}
+                                                        onChange={() => {
+                                                        }}
                                                     >
                                                         <option value=""></option>
                                                         {!doneByValueExists && currentDoneByValue && (
@@ -494,7 +496,8 @@ export default function TasksClient(): React.ReactElement {
                                                             color: 'var(--foreground)',
                                                             border: '1px solid var(--border-color)'
                                                         }}
-                                                        onChange={() => {}}
+                                                        onChange={() => {
+                                                        }}
                                                     >
                                                         <option value=""></option>
                                                         {!commentValueExists && currentCommentValue && (
@@ -580,10 +583,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }}                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--hover-bg)'
-                            e.currentTarget.style.color = 'var(--foreground)'
-                        }}
+                        }} onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--hover-bg)'
+                    e.currentTarget.style.color = 'var(--foreground)'
+                }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -595,10 +598,10 @@ export default function TasksClient(): React.ReactElement {
                             color: 'var(--button-text)',
                             marginTop: '2px', marginBottom: '2px',
                             marginLeft: '4px'
-                        }}                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--hover-bg)'
-                            e.currentTarget.style.color = 'var(--foreground)'
-                        }}
+                        }} onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--hover-bg)'
+                    e.currentTarget.style.color = 'var(--foreground)'
+                }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -614,7 +617,11 @@ export default function TasksClient(): React.ReactElement {
                         }}
                         onClick={() => {
                             if (paySelect && paySelect.length > 0) {
-                                updatePayrollSelectionData(paySelect[0]);
+                                const dataToUpdate = {
+                                    ...paySelect[0],
+                                    description: paySelect[0].route_description,
+                                };
+                                updatePayrollSelectionData(dataToUpdate);
                                 openPayrollSelection();
                             }
                         }}
@@ -634,10 +641,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }}                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--hover-bg)'
-                            e.currentTarget.style.color = 'var(--foreground)'
-                        }}
+                        }} onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--hover-bg)'
+                    e.currentTarget.style.color = 'var(--foreground)'
+                }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -649,10 +656,10 @@ export default function TasksClient(): React.ReactElement {
                             color: 'var(--button-text)',
                             marginTop: '2px', marginBottom: '2px',
                             marginLeft: '4px'
-                        }}                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--hover-bg)'
-                            e.currentTarget.style.color = 'var(--foreground)'
-                        }}
+                        }} onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--hover-bg)'
+                    e.currentTarget.style.color = 'var(--foreground)'
+                }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -665,10 +672,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }}                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--hover-bg)'
-                            e.currentTarget.style.color = 'var(--foreground)'
-                        }}
+                        }} onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--hover-bg)'
+                    e.currentTarget.style.color = 'var(--foreground)'
+                }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -682,10 +689,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }}                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--hover-bg)'
-                            e.currentTarget.style.color = 'var(--foreground)'
-                        }}
+                        }} onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--hover-bg)'
+                    e.currentTarget.style.color = 'var(--foreground)'
+                }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -698,10 +705,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }}                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--hover-bg)'
-                            e.currentTarget.style.color = 'var(--foreground)'
-                        }}
+                        }} onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--hover-bg)'
+                    e.currentTarget.style.color = 'var(--foreground)'
+                }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -714,10 +721,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }}                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--hover-bg)'
-                            e.currentTarget.style.color = 'var(--foreground)'
-                        }}
+                        }} onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--hover-bg)'
+                    e.currentTarget.style.color = 'var(--foreground)'
+                }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -729,4 +736,3 @@ export default function TasksClient(): React.ReactElement {
         </div>
     )
 }
-
