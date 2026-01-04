@@ -1,0 +1,5 @@
+### Invoice Tasks
+GET http://0.0.0.0:8000/api/v1/accounting/invoice_tasks
+
+>> Invoice_Tasks/response-{{$timestamp}}.json
+

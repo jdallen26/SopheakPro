@@ -1,0 +1,5 @@
+### PSelect Record
+GET http://192.168.12.241:8000/api/v1/payroll/pselect
+
+>> PSelect_Record/response-{{$timestamp}}.json
+

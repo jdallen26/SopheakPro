@@ -1,0 +1,60 @@
+{
+  "count": 11,
+  "weeks": [
+    {
+      "row_id": 11,
+      "payroll_week": "11/24/2025",
+      "task_count": 1560
+    },
+    {
+      "row_id": 10,
+      "payroll_week": "11/17/2025",
+      "task_count": 18
+    },
+    {
+      "row_id": 9,
+      "payroll_week": "11/10/2025",
+      "task_count": 36
+    },
+    {
+      "row_id": 8,
+      "payroll_week": "11/03/2025",
+      "task_count": 54
+    },
+    {
+      "row_id": 7,
+      "payroll_week": "10/27/2025",
+      "task_count": 8
+    },
+    {
+      "row_id": 6,
+      "payroll_week": "10/13/2025",
+      "task_count": 3
+    },
+    {
+      "row_id": 5,
+      "payroll_week": "09/01/2025",
+      "task_count": 5
+    },
+    {
+      "row_id": 4,
+      "payroll_week": "08/25/2025",
+      "task_count": 6
+    },
+    {
+      "row_id": 3,
+      "payroll_week": "06/09/2025",
+      "task_count": 2
+    },
+    {
+      "row_id": 2,
+      "payroll_week": "06/02/2025",
+      "task_count": 1
+    },
+    {
+      "row_id": 1,
+      "payroll_week": "04/28/2025",
+      "task_count": 1
+    }
+  ]
+}

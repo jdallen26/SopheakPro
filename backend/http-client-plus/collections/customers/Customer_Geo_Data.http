@@ -1,0 +1,5 @@
+### Customer Geo Data
+GET http://0.0.0.0:8000/api/v1/customers/geo
+
+>> Customer_Geo_Data/response-{{$timestamp}}.json
+

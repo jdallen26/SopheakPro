@@ -1,0 +1,5 @@
+### Employees
+GET http://192.168.12.241:8000/api/v1/hr/employees/?limit=1&employed=1
+
+>> Employees/response-{{$timestamp}}.json
+

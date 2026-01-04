@@ -1,0 +1,5 @@
+### Route List
+GET http://0.0.0.0:8000/api/v1/routing/route_list/?active=1
+
+>> Route_List/response-{{$timestamp}}.json
+

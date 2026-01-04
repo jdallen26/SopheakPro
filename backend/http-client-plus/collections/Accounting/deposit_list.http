@@ -1,0 +1,6 @@
+### deposit list
+POST http://0.0.0.0:8000/api/v1/accounting/deposit_list
+Content-Type: application/json
+
+>> deposit_list/response-{{$timestamp}}.json
+

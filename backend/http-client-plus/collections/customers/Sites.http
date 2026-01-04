@@ -1,0 +1,5 @@
+### Sites
+GET http://0.0.0.0:8000/api/v1/customers/sites/?limit=10
+
+>> Sites/response-{{$timestamp}}.json
+

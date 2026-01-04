@@ -1,0 +1,5 @@
+### Invocie History Tasks
+GET http://0.0.0.0:8000/api/v1/accounting/invoice_history_tasks
+
+>> Invocie_History_Tasks/response-{{$timestamp}}.json
+

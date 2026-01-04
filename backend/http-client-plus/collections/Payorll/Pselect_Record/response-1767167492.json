@@ -1,0 +1,24 @@
+{
+  "count": 1,
+  "pselect": [
+    {
+      "uid": 1,
+      "emp_id": 3052,
+      "emp_name": "JAY D. ALLEN",
+      "start": "12/01/2025",
+      "end": "12/08/2025",
+      "week_done": "11/24/2025",
+      "old_start": "",
+      "old_end": "",
+      "mile_rate": "0.2000",
+      "chk_price_paid": "",
+      "reim_exp": "5.00",
+      "otime_percentage": "",
+      "spec_equip": false,
+      "billing_date": "",
+      "invoice_num": 655.0,
+      "route": "A  ",
+      "route_description": "Northeast Park/St Anthony Main/Wedge/Smpls"
+    }
+  ]
+}

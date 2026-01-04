@@ -1,0 +1,271 @@
+{
+  "json_prompts_for_ai": {
+    "preprocessing_notes": [
+      "All the popups need to be the same style. We will be only creating and refining one and then we go form there.",
+      "The payrollPopupPayrollSelection should open automatically on the *first* page load only. Subsequent reloads or refreshes should not trigger the popup.",
+      "The 'Change Payroll' button on the TasksClient page should also trigger the payrollPopupPayrollSelection popup."
+    ],
+    "summary": {
+      "subject": "Custom Popups",
+      "general_popup_description": [
+        "These will be custom popups. They need to be centered and the the card within the popup should only be visible.",
+        "Card should have header, body and footer. Title in the header, controls in the body and the buttons in the footer.",
+        "There are going to be several popups per app, so make a storage and calling standard."
+      ],
+      "new_requirements": [
+        "1. The Payroll Selection popup should only auto-load on the very first page visit, not on subsequent reloads or refreshes.",
+        "2. After a new payroll period is selected, the `TasksClient` page must be updated. The filter display text should show the employee's name (from the new pselect record) instead of the emp_id.",
+        "3. A progress bar must be added next to the filter display. This bar will show the percentage of tasks that are complete (i.e., have a `done_by` value). It should update in real-time as tasks are marked done.",
+        "4. The progress bar must be a gradient: red for 0-50%, amber for 51-89%, and green for 90-100%.",
+        "5. The 'Change Payroll' button on the `TasksClient` page must also trigger the Payroll Selection popup."
+      ]
+    },
+    "def_openPopup": {
+      "description": "def to open Payroll popups.",
+      "main_functionality": "Opens the specified popup according to args.",
+      "notes": [
+        "Document the def as professionally as possible so when referenced, we can see all the information we need.",
+        "Just code the switch with the popupName['allowed_names'] and code the PayrollSelection for to open."
+      ],
+      "args": {
+        "count": 3,
+        "doc": {
+          "desc": "DOM passed to popup to update the payroll page.",
+          "required": true
+        },
+        "popupName": {
+          "desc": "Name of the popup to display.",
+          "allowed_names": [
+            "payrollSelection",
+            "insertTaskEntry",
+            "changeTaskCommission",
+            "newDeposit"
+          ],
+          "required": true
+        },
+        "popupData": {
+          "desc": "Settings, filters, order by's and so on.",
+          "required": false,
+          "filter": "[cust_id] = 45632",
+          "orderBy": "[week_of] DESC, [route]",
+          "isActive": true,
+          "charge": 145.00
+        }
+      }
+    },
+    "implementation_checklist": [
+      { "step": 1, "task": "Create Popup Component (`PayrollSelectionPopup.tsx`)", "status": "pending", "notes": "Basic structure, header, footer, and body layout." },
+      { "step": 2, "task": "Implement State Management", "status": "pending", "notes": "Use Zustand or Context to manage popup visibility, pselect data, and form inputs." },
+      { "step": 3, "task": "Implement Auto-Load on First Visit", "status": "pending", "notes": "In `app/payroll/processor/page.tsx`, use useEffect and sessionStorage to show popup only once." },
+      { "step": 4, "task": "Wire 'Change Payroll' Button", "status": "pending", "notes": "Add a button to `TasksClient.tsx` that opens the popup." },
+      { "step": 5, "task": "Build Popup Body Controls", "status": "pending", "notes": "Create select dropdowns for Employee, Route, Week, and the Special Equipment toggle." },
+      { "step": 6, "task": "Fetch Data for Controls", "status": "pending", "notes": "Populate dropdowns by calling the API endpoints specified in the JSON." },
+      { "step": 7, "task": "Implement 'Open Payroll' Action", "status": "pending", "notes": "On click, update the pselect record via API, update client state, and close the popup." },
+      { "step": 8, "task": "Implement 'Cancel' Action", "status": "pending", "notes": "On click, close the popup without saving changes." },
+      { "step": 9, "task": "Integrate with `TasksClient.tsx`", "status": "pending", "notes": "Update the filter display to show the selected employee's name instead of their ID, using the data from the updated pselect record." },
+      { "step": 10, "task": "Implement Progress Bar", "status": "pending", "notes": "Calculate completion percentage based on 'done_by' field having a value. Display a gradient progress bar (0-50% red, 51-89% amber, 90-100% green). The bar must update when a task's 'done_by' status changes." },
+      { "step": 11, "task": "Final Styling and Theming", "status": "pending", "notes": "Ensure the popup and all new elements match the application's light/dark theme." },
+      { "step": 12, "task": "Testing and Refinement", "status": "pending", "notes": "Thoroughly test all functionality, including edge cases and responsiveness." }
+    ],
+    "popups": [
+      {
+        "name": "Payroll Selection",
+        "popup_name": "payrollPopupPayrollSelection",
+        "notes": [
+          "Load pselect record once and use for entire form.",
+          "Load the Payroll Selection on the first page load, any reload/refresh/update should not open the popup again. Use sessionStorage to track first visit.",
+          "The user clicks on the 'Change Payroll' button on the main page and the popup opens.",
+          "After the 'Open Payroll' button is clicked, the `pselect` data in the Zustand store needs to be updated.",
+          "The filter display on the `TasksClient` page should be updated to show the employee's name from the new `pselect` record instead of the `emp_id`.",
+          "A progress bar should be displayed next to the filter string on the `TasksClient` page.",
+          "The progress bar will show the percentage of tasks that have a 'done_by' value.",
+          "The progress bar color should be a gradient: red (0-50%), amber (51-89%), green (90-100%). It must update in real-time."
+        ],
+        "layout": {
+          "header": {
+            "title": "Payroll Selection"
+          },
+          "body": {
+            "row_1": [
+              {
+                "type": "select",
+                "name": "employeeSelection",
+                "notes": [
+                  "default_value: [emp_id]",
+                  "1 visible column: pselect.name.toUpper()",
+                  "select list: value=emp_id, label=name, aria-label=name + Commission Rate: comm_rate"
+                ],
+                "title": "Employee",
+                "action": {
+                  "url": "http://192.168.1.50:8000/api/v1/hr/employees/?refresh=1&employed=true",
+                  "returned_example": {
+                    "count": 1,
+                    "employees": [
+                      {
+                        "id": 423,
+                        "name": "NEAL E. HILL",
+                        "company": "",
+                        "ssn": "654654654",
+                        "employed": true,
+                        "status": "SINGLE",
+                        "allowances": 0,
+                        "hourly": "15.9700",
+                        "address1": "12345 DRAKE ST. NW.",
+                        "address2": "",
+                        "city": "COON RAPIDS",
+                        "state": "MN",
+                        "zip": "55448",
+                        "cell": "",
+                        "phone": "7634799182",
+                        "phone2": "",
+                        "start_date": "2021-03-13T00:00:00",
+                        "end_date": null,
+                        "comm_rate": "0.3500",
+                        "efficiency": "0.00",
+                        "map_link": "https://www.dedicatedmaps.com/map/oMOWX",
+                        "photo": "",
+                        "sales_commission_rate": "0.0000",
+                        "pwd": "",
+                        "driver": true,
+                        "mass_mailer": null,
+                        "has_personal_prospects": false,
+                        "sales": null,
+                        "subcontractor": false,
+                        "is_1099": null,
+                        "fed_tax_number": "",
+                        "entity": "",
+                        "email": "HILLDUDE101@gmail.com"
+                      }
+                    ]
+                  },
+                  "orderBy": "Employee Name"
+                }
+              },
+              {
+                "type": "select",
+                "name": "routeSelection",
+                "title": "Route",
+                "notes": [
+                  "default_value: pselect.route",
+                  "1 visible column: pselect.route.toUpper()",
+                  "select list: value=route, label=route, aria-label=first 30 chars of description | Employee: pselect.emp_id"
+                ],
+                "action": {
+                  "url": "http://192.168.1.50:8000/api/v1/routing/route_list/?refresh=1&active=true",
+                  "returned_example": {
+                    "count": 1,
+                    "routes": [
+                      {
+                        "id": 1,
+                        "route": "A",
+                        "description": "Northeast Park/St Anthony Main/Wedge/Smpls",
+                        "active": true,
+                        "numberIcon": "cir_small_numbers_blue_",
+                        "driver": 682,
+                        "icon": 5,
+                        "sortOrder": 1,
+                        "latitude": 44.97962107529566,
+                        "longitude": -93.26651865481466
+                      }
+                    ]
+                  },
+                  "orderBy": "sortOrder"
+                }
+              }
+            ],
+            "row_2": [
+              {
+                "type": "select",
+                "name": "weekDone",
+                "title": "Payroll Week",
+                "notes": [
+                  "default_value:  pselect['week_done']",
+                  "1 visible column: pselect.[week_done]",
+                  "select list: value={week_done}, label={week_done}, aria-label={week_done} | Task Count: task_count"
+                ],
+                "action": {
+                  "url": "http://192.168.1.50:8000/api/v1/payroll/payroll_weeks/",
+                  "returned_example": {
+                    "count": 2,
+                    "weeks": [
+                      {
+                        "row_id": 11,
+                        "payroll_week": "11/24/2025",
+                        "task_count": 1560
+                      },
+                      {
+                        "row_id": 10,
+                        "payroll_week": "11/17/2025",
+                        "task_count": 18
+                      }
+                    ]
+                  },
+                  "orderBy": "payroll_week DESC"
+                }
+              },
+              {
+                "type": "toggle button",
+                "name": "specialEquipment",
+                "title": "Special Equipment",
+                "notes": [
+                  "default_value: pselect['spec_equip']",
+                  "1 visible column: pselect.'spec_equip'",
+                  "aria-label=Special Equipment toggle"
+                ],
+                "action": {
+                  "url": "http://192.168.1.50:8000/api/v1/payroll/pselect/",
+                  "returned_example": {
+                    "count": 1,
+                    "pselect": [
+                      {
+                        "uid": 1,
+                        "emp_id": 3052,
+                        "start": "12/01/2025",
+                        "end": "12/08/2025",
+                        "week_done": "11/24/2025",
+                        "old_start": "",
+                        "old_end": "",
+                        "mile_rate": "0.2000",
+                        "chk_price_paid": "",
+                        "reim_exp": "5.00",
+                        "otime_percentage": "",
+                        "spec_equip": false,
+                        "billing_date": "",
+                        "invoice_num": 655,
+                        "route": "A  "
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "footer": {
+            "buttons": [
+              {
+                "name": "openPayroll",
+                "title": "Open Payroll",
+                "action": [
+                  "Updates the pselect data on the main page.",
+                  "Refilters the main page according to the selections made in the popup and updates the table.",
+                  "This will also update the filter display and progress bar on the TasksClient page.",
+                  "update hte label each time the popup is opened and when a selection changes",
+                  "aria-label={week_done} | Employee: pselect.emp_id \n Route: pselect.route | Task Count: task_count] \n Special Equipment: spec_equip"
+                ]
+              },
+              {
+                "name": "cancel",
+                "title": "Cancel",
+                "action": [
+                  "Closes the popup without changing anything.",
+                  "aria-label={week_done} | Employee: pselect.emp_id \n Route: pselect.route | Task Count: task_count] \n Special Equipment: spec_equip"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}
+
