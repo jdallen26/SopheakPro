@@ -24,6 +24,11 @@ import {
     ChevronsLeft, ChevronsRight, SquareMenuIcon
 } from 'lucide-react'
 
+
+import { SiTestinglibrary  } from "react-icons/si";
+import { MdOutlineSpaceDashboard } from "react-icons/md"
+
+
 type MenuItem = {
     id: string
     label: string
@@ -35,48 +40,49 @@ type MenuItem = {
 }
 
 const MENU: MenuItem[] = [
-    {id: 'home', label: 'Dashboard', icon: <Home size={18}/>, href: '/'},
-    {id: 'accounting', label: 'Accounting', icon: <Calculator size={18}/>, href: '/accounting'},
+    {id: 'home', label: 'Dashboard', icon: <MdOutlineSpaceDashboard size={18}/>, href: '/'},
+    // {id: 'accounting', label: 'Accounting', icon: <Calculator size={18}/>, href: '/accounting'},
     {
         id: 'payroll',
         label: 'Payroll',
         icon: <DollarSign size={18}/>,
         children: [
-            {id: 'payroll-sites', label: 'Site List', icon: <Building2 size={16}/>, href: '/tests/payroll/sites'},
+            // {id: 'payroll-sites', label: 'Site List', icon: <Building2 size={16}/>, href: '/tests/payroll/sites'},
             {id: 'payroll-processor', label: 'Payroll Processor', icon: <Play size={16}/>, href: '/payroll/processor'},
         ],
     },
-    {id: 'hr', label: 'HR', icon: <Users size={18}/>, href: '/hr'},
-    {
-        id: 'routing',
-        label: 'Routing',
-        icon: <Route size={18}/>,
-        children: [
-            {id: 'routing-map', label: 'Live Map', icon: <Map size={16}/>, href: '/routing/map'},
-            {id: 'routing-planner', label: 'Route Planner', icon: <Play size={16}/>, href: '/routing/planner'},
-        ],
-    },
-    {id: 'customers', label: 'Customers', icon: <BookUser size={18}/>, href: '/customers'},
-    {id: 'invoicing', label: 'Invoicing', icon: <FileText size={18}/>, href: '/invoicing'},
-    {
-        id: 'reports',
-        label: 'Reports',
-        icon: <BarChart3 size={18}/>,
-        children: [
-            {id: 'reports-sales', label: 'Sales Report', icon: <UserCircle size={16}/>, href: '/reports/sales'},
-            {
-                id: 'reports-performance',
-                label: 'Performance Report',
-                icon: <UserCircle size={16}/>,
-                href: '/reports/performance'
-            },
-        ],
-    },
-    {id: 'settings', label: 'Settings Page', icon: <Settings size={18}/>, href: '/settings'},
-    {id: 'calendar', label: 'Calendar', icon: <Calendar size={18}/>, href: '/calendar'},
-    {id: 'login', label: 'Login', icon: <LogIn size={18}/>, href: '/login'},
-    {id: 'profile', label: 'Profile', icon: <UserCircle size={18}/>, href: '/profile'},
-    {id: 'kanban', label: 'Kanban Board', icon: <LayoutGrid size={18}/>, href: '/kanban'},
+    // {id: 'hr', label: 'HR', icon: <Users size={18}/>, href: '/hr'},
+    // {
+    //     id: 'routing',
+    //     label: 'Routing',
+    //     icon: <Route size={18}/>,
+    //     children: [
+    //         {id: 'routing-map', label: 'Live Map', icon: <Map size={16}/>, href: '/routing/map'},
+    //         {id: 'routing-planner', label: 'Route Planner', icon: <Play size={16}/>, href: '/routing/planner'},
+    //     ],
+    // },
+    // {id: 'customers', label: 'Customers', icon: <BookUser size={18}/>, href: '/customers'},
+    // {id: 'invoicing', label: 'Invoicing', icon: <FileText size={18}/>, href: '/invoicing'},
+    // {
+    //     id: 'reports',
+    //     label: 'Reports',
+    //     icon: <BarChart3 size={18}/>,
+    //     children: [
+    //         {id: 'reports-sales', label: 'Sales Report', icon: <UserCircle size={16}/>, href: '/reports/sales'},
+    //         {
+    //             id: 'reports-performance',
+    //             label: 'Performance Report',
+    //             icon: <UserCircle size={16}/>,
+    //             href: '/reports/performance'
+    //         },
+    //     ],
+    // },
+    // {id: 'settings', label: 'Settings Page', icon: <Settings size={18}/>, href: '/settings'},
+    // {id: 'calendar', label: 'Calendar', icon: <Calendar size={18}/>, href: '/calendar'},
+    // {id: 'login', label: 'Login', icon: <LogIn size={18}/>, href: '/login'},
+    // {id: 'profile', label: 'Profile', icon: <UserCircle size={18}/>, href: '/profile'},
+    // {id: 'kanban', label: 'Kanban Board', icon: <LayoutGrid size={18}/>, href: '/kanban'},
+    // {id: 'ControlTesting', label: 'Control Testing', icon: <SiTestinglibrary size={18}/>, href: '/control-testing'},
 ]
 
 export default function Sidebar(): React.ReactElement {
