@@ -2,9 +2,8 @@
 'use client'
 import React, {useEffect, useRef, useState, useMemo} from 'react'
 import {usePayrollStore} from '@/app/store/payroll-store';
-import {toast} from '@/app/utils/toast';
+import { toast } from '@/app/utils/toast';
 import ComboBox from '@/app/shared/components/ComboBox';
-import {HybridSelectWrapper, HybridSelectOption, HybridSelectValue} from '@/app/shared/components/HybridSelectWrapper';
 
 interface Task {
     cust_id: string
@@ -31,9 +30,9 @@ interface Task {
 }
 
 interface Comment {
-    id: number;
-    comment: string;
-    count?: number;
+    id: number
+    comment: string
+    count: number
 }
 
 interface PaySelect {
@@ -72,7 +71,7 @@ type Column = {
 
 const formatToYyyyMmDd = (dateString: string): string => {
     if (!dateString || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
-        return dateString; // Return original if the format is not mm/dd/yyyy
+        return dateString; // Return original if format is not mm/dd/yyyy
     }
     const [month, day, year] = dateString.split('/');
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
@@ -80,9 +79,7 @@ const formatToYyyyMmDd = (dateString: string): string => {
 
 export default function TasksClient(): React.ReactElement {
     const {openPayrollSelection, updatePayrollSelectionData, refreshId} = usePayrollStore();
-    const [commentOptions, setCommentOptions] = useState<HybridSelectOption[]>([]);
     const [tasks, setTasks] = useState<Task[] | null>(null)
-    const [selectKey, setSelectKey] = useState(0); // Key to force re-render
     const [paySelect, setPaySelect] = useState<PaySelect[] | null>(null)
     const [employees, setEmployees] = useState<ApiEmployee[]>([]);
     const [error, setError] = useState<string | null>(null)
@@ -99,7 +96,7 @@ export default function TasksClient(): React.ReactElement {
         const completedTasks = currentTasks.filter(t => t.done_by && t.done_by.trim() !== '').length;
         const totalTasks = currentTasks.length;
         const percentage = Math.round((completedTasks / totalTasks) * 100);
-
+        
         setProgress(percentage);
         setProgressText(`${completedTasks} of ${totalTasks} Complete`);
     };
@@ -111,13 +108,13 @@ export default function TasksClient(): React.ReactElement {
         async function fetchInitialData() {
             try {
                 const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.1.50:8000').replace(/\/$/, '')
-
+                
                 const pselectUrl = `${API_BASE}/api/v1/payroll/pselect`
                 const pselectRes = await fetch(pselectUrl, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({}),
-                    signal: ac.signal,
+                    signal: ac.signal, 
                     cache: 'no-store'
                 })
                 if (!pselectRes.ok) throw new Error(`PSelect fetch failed: ${pselectRes.status}`);
@@ -128,15 +125,15 @@ export default function TasksClient(): React.ReactElement {
                 const empUrl = `${API_BASE}/api/v1/hr/employees`;
                 const empRes = await fetch(empUrl, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({employed: true}),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ employed: true }),
                 });
                 if (!empRes.ok) throw new Error(`Employees fetch failed: ${empRes.status}`);
                 const empData = await empRes.json();
                 const employeeList: ApiEmployee[] = empData?.employees || [];
                 if (mountedRef.current) setEmployees(employeeList);
 
-            } catch (err) {
+            } catch(err) {
                 if ((err as Error).name !== 'AbortError' && mountedRef.current) {
                     setError((err as Error).message);
                     setPaySelect([]);
@@ -155,7 +152,7 @@ export default function TasksClient(): React.ReactElement {
 
     useEffect(() => {
         if (!paySelect || paySelect.length === 0) {
-            if (paySelect !== null) {
+            if (paySelect !== null) { 
                 setTasks([]);
             }
             return;
@@ -172,12 +169,12 @@ export default function TasksClient(): React.ReactElement {
 
                 const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.1.50:8000').replace(/\/$/, '')
                 const url = `${API_BASE}/api/v1/payroll/task_list`
-
+                
                 const res = await fetch(url, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({week_of: weekOfFormatted, route: route}),
-                    signal: ac.signal,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ week_of: weekOfFormatted, route: route }),
+                    signal: ac.signal, 
                     cache: 'no-store'
                 })
 
@@ -205,60 +202,6 @@ export default function TasksClient(): React.ReactElement {
             ac.abort()
         }
     }, [paySelect])
-
-    useEffect(() => {
-        const fetchComments = async () => {
-            const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.1.50:8000').replace(/\/$/, '');
-            try {
-                const res = await fetch(`${API_BASE}/api/v1/payroll/comments`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        refresh: true,
-                        min_count: 50
-                    })
-                });
-
-                const data = await res.json();
-                if (data && Array.isArray(data.comments)) {
-                    const formattedOptions = data.comments.map((c: Comment) => ({
-                        id: c.id,
-                        label: c.comment,
-                        value: c.id,
-                        icon: 'comment'
-                    }));
-                    setCommentOptions(formattedOptions);
-                }
-            } catch (error) {
-                console.error("Failed to fetch comments", error);
-            }
-        };
-
-        fetchComments();
-    }, []);
-
-    // Handler for the single select change
-    const handleCommentChange = (uid: number, value: HybridSelectValue, option: HybridSelectOption | HybridSelectOption[] | null) => {
-        // Example: Cancel the change if the specific ID is selected (e.g., ID 999)
-        const valueOverride = false;
-        if (value === 999 || value === '999' || valueOverride) {
-            toast('This selection is not allowed.', 'warning', 'Change Cancelled');
-            // Force re-render to reset the control to the previous value
-            setSelectKey(prev => prev + 1);
-            return;
-        }
-
-        // Example of accessing the full option object
-        if (option && !Array.isArray(option)) {
-            console.log("Selected Option Details:", option);
-            toast(`Selected: ${option.label} (ID: ${value}) for UID: ${uid}`, 'info', 'Selection Changed');
-        } else {
-            toast(`Selected ID: ${value} for UID: ${uid}`, 'info', 'Selection Changed');
-        }
-
-        // Update the task state
-        handleTaskChange(uid, 'comment', String(value));
-    };
 
     const currentEmployeeName = useMemo(() => {
         if (!paySelect || paySelect.length === 0 || employees.length === 0) {
@@ -349,8 +292,8 @@ export default function TasksClient(): React.ReactElement {
     const handleTaskChange = (uid: number, field: keyof Task, value: string | number | boolean) => {
         setTasks(prevTasks => {
             if (!prevTasks) return null;
-            return prevTasks.map(task =>
-                task.uid === uid ? {...task, [field]: value} : task
+            return prevTasks.map(task => 
+                task.uid === uid ? { ...task, [field]: value } : task
             );
         });
     };
@@ -373,9 +316,9 @@ export default function TasksClient(): React.ReactElement {
                             <sub>: <span>{paySelect[0].route_description}</span></sub>
                         </div>
                         <div className="flex items-center gap-2"
-                             style={{paddingTop: '4px'}}
+                            style={{paddingTop: '4px'}}
                         >
-                            <div
+                            <div 
                                 className="relative h-4 w-full rounded-full bg-gray-200 overflow-hidden"
                                 style={{width: '150px', height: '15px'}}
                                 role="progressbar"
@@ -517,10 +460,10 @@ export default function TasksClient(): React.ReactElement {
                                             // Custom
                                             case 'done_by':
                                                 const doneByOptions = [
-                                                    {value: currentEmployeeName, label: currentEmployeeName},
-                                                    {value: 'CANCELLED', label: 'CANCELLED'},
-                                                    {value: 'NOT DONE', label: 'NOT DONE'},
-                                                    {value: '', label: ''}
+                                                    { value: currentEmployeeName, label: currentEmployeeName },
+                                                    { value: 'CANCELLED', label: 'CANCELLED' },
+                                                    { value: 'NOT DONE', label: 'NOT DONE' },
+                                                    { value: '', label: '' }
                                                 ];
                                                 cellContent = (
                                                     <ComboBox
@@ -536,46 +479,23 @@ export default function TasksClient(): React.ReactElement {
                                                 break;
 
                                             case 'comment':
-                                                // const commentOptions = [
-                                                //     {value: '', label: ''},
-                                                //     {value: 'com1', label: 'Comment 1'},
-                                                //     {value: 'com2', label: 'Comment 2'},
-                                                //     {value: 'com3', label: 'Comment 3'},
-                                                // ];
-                                                // cellContent = (
-                                                //     <ComboBox
-                                                //         id={`comment-combobox-${task.uid}`}
-                                                //         options={commentOptions}
-                                                //         value={String(rawValue ?? '')}
-                                                //         onChange={(newValue) => handleTaskChange(task.uid, 'comment', newValue)}
-                                                //         onBlur={() => handleBlur(task.uid)}
-                                                //         fontSize="9px"
-                                                //         icon="arrow-down"
-                                                //     />
-                                                // );
-
+                                                const commentOptions = [
+                                                    {value: '', label: ''},
+                                                    {value: 'com1', label: 'Comment 1'},
+                                                    {value: 'com2', label: 'Comment 2'},
+                                                    {value: 'com3', label: 'Comment 3'},
+                                                ];
                                                 cellContent = (
-                                                    <div className="max-w-md hybrid-select">
-                                                        <HybridSelectWrapper
-                                                            key={selectKey} // Add key prop here/
-                                                            id={`comment-hybrid-${task.uid}`}
-                                                            name={`comment-hybrid-${task.uid}`}
-                                                            placeholder={String(rawValue ?? 'Select Comment...')}
-                                                            options={commentOptions}
-                                                            value={String(rawValue)}
-                                                            onChange={(val, opt) => handleCommentChange(task.uid, val, opt)}
-                                                            clearable={false}
-                                                            searchable={true}
-                                                            // onOpen={() => toast('Dropdown Opened', 'info', 'Event: Open')}
-                                                            // onClose={() => toast('Dropdown Closed', 'info', 'Event: Close')}
-                                                            // onInput={(val: string) => toast(`Input: ${val}`, 'info', 'Event: Input')}
-                                                            // onLoad={(opts: HybridSelectOption[], term: string) => toast(`Loaded ${opts.length} options for "${term}"`, 'success', 'Event: Load')}
-                                                            // onError={(err: unknown) => toast(`Error: ${String(err)}`, 'danger', 'Event: Error')}
-                                                            lightMode={true}
-                                                            required={true}
-                                                        />
-                                                    </div>
-                                                )
+                                                    <ComboBox
+                                                        id={`comment-combobox-${task.uid}`}
+                                                        options={commentOptions}
+                                                        value={String(rawValue ?? '')}
+                                                        onChange={(newValue) => handleTaskChange(task.uid, 'comment', newValue)}
+                                                        onBlur={() => handleBlur(task.uid)}
+                                                        fontSize="9px"
+                                                        icon="arrow-down"
+                                                    />
+                                                );
                                                 break;
 
                                             case 'work_order':
@@ -653,10 +573,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -668,10 +588,10 @@ export default function TasksClient(): React.ReactElement {
                             color: 'var(--button-text)',
                             marginTop: '2px', marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -711,10 +631,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -726,10 +646,10 @@ export default function TasksClient(): React.ReactElement {
                             color: 'var(--button-text)',
                             marginTop: '2px', marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -742,10 +662,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -759,10 +679,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -775,10 +695,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'
@@ -791,10 +711,10 @@ export default function TasksClient(): React.ReactElement {
                             marginTop: '2px',
                             marginBottom: '2px',
                             marginLeft: '4px'
-                        }} onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover-bg)'
-                    e.currentTarget.style.color = 'var(--foreground)'
-                }}
+                        }}                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--hover-bg)'
+                            e.currentTarget.style.color = 'var(--foreground)'
+                        }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--button-bg)'
                             e.currentTarget.style.color = 'var(--button-text)'

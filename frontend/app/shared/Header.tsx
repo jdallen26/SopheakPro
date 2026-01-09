@@ -78,84 +78,84 @@ export default function Header(): React.ReactElement {
       </div>
 
       <div className="flex items-center gap-1 ml-4">
-       <button
-          type="button"
-          className="p-2 rounded transition-colors relative"
-          style={{ color: 'var(--foreground-secondary)' }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-        >
-          <Bell size={20} />
-        </button>
+       {/*<button*/}
+       {/*   type="button"*/}
+       {/*   className="p-2 rounded transition-colors relative"*/}
+       {/*   style={{ color: 'var(--foreground-secondary)' }}*/}
+       {/*   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}*/}
+       {/*   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}*/}
+       {/* >*/}
+       {/*   <Bell size={20} />*/}
+       {/* </button>*/}
 
-        <div className="relative" ref={settingsRef}>
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(!settingsOpen)}
-            className="p-2 rounded transition-colors"
-            style={{
-              color: 'var(--foreground-secondary)',
-              background: settingsOpen ? 'var(--hover-bg)' : 'transparent',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
-            onMouseLeave={(e) => {
-              if (!settingsOpen) e.currentTarget.style.background = 'transparent'
-            }}
-          >
-            <Settings size={20} />
-          </button>
+        {/*<div className="relative" ref={settingsRef}>*/}
+        {/*  <button*/}
+        {/*    type="button"*/}
+        {/*    onClick={() => setSettingsOpen(!settingsOpen)}*/}
+        {/*    className="p-2 rounded transition-colors"*/}
+        {/*    style={{*/}
+        {/*      color: 'var(--foreground-secondary)',*/}
+        {/*      background: settingsOpen ? 'var(--hover-bg)' : 'transparent',*/}
+        {/*    }}*/}
+        {/*    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}*/}
+        {/*    onMouseLeave={(e) => {*/}
+        {/*      if (!settingsOpen) e.currentTarget.style.background = 'transparent'*/}
+        {/*    }}*/}
+        {/*  >*/}
+        {/*    <Settings size={20} />*/}
+        {/*  </button>*/}
 
-          {settingsOpen && (
-            <div
-              className="absolute right-0 top-full mt-1 w-48 rounded overflow-hidden z-50"
-              style={{
-                background: 'var(--card-bg)',
-                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.15)',
-                border: '1px solid var(--border-color)',
-              }}
-            >
-              <div className="p-2 border-b" style={{ borderColor: 'var(--border-color)' }}>
-                <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--foreground-muted)' }}>
-                  Theme
-                </div>
-                <div className="flex gap-1">
-                  {mounted && themeOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setTheme(opt.value)}
-                      className="flex-1 flex flex-col items-center gap-1 p-1.5 rounded transition-colors"
-                      style={{
-                        background: theme === opt.value ? 'var(--active-bg)' : 'transparent',
-                        color: theme === opt.value ? 'var(--teal)' : 'var(--foreground-secondary)',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (theme !== opt.value) e.currentTarget.style.background = 'var(--hover-bg)'
-                      }}
-                      onMouseLeave={(e) => {
-                        if (theme !== opt.value) e.currentTarget.style.background = 'transparent'
-                      }}
-                    >
-                      {opt.icon}
-                      <span className="text-[10px]">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        {/*  {settingsOpen && (*/}
+        {/*    <div*/}
+        {/*      className="absolute right-0 top-full mt-1 w-48 rounded overflow-hidden z-50"*/}
+        {/*      style={{*/}
+        {/*        background: 'var(--card-bg)',*/}
+        {/*        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.15)',*/}
+        {/*        border: '1px solid var(--border-color)',*/}
+        {/*      }}*/}
+        {/*    >*/}
+        {/*      <div className="p-2 border-b" style={{ borderColor: 'var(--border-color)' }}>*/}
+        {/*        <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--foreground-muted)' }}>*/}
+        {/*          Theme*/}
+        {/*        </div>*/}
+        {/*        <div className="flex gap-1">*/}
+        {/*          {mounted && themeOptions.map((opt) => (*/}
+        {/*            <button*/}
+        {/*              key={opt.value}*/}
+        {/*              onClick={() => setTheme(opt.value)}*/}
+        {/*              className="flex-1 flex flex-col items-center gap-1 p-1.5 rounded transition-colors"*/}
+        {/*              style={{*/}
+        {/*                background: theme === opt.value ? 'var(--active-bg)' : 'transparent',*/}
+        {/*                color: theme === opt.value ? 'var(--teal)' : 'var(--foreground-secondary)',*/}
+        {/*              }}*/}
+        {/*              onMouseEnter={(e) => {*/}
+        {/*                if (theme !== opt.value) e.currentTarget.style.background = 'var(--hover-bg)'*/}
+        {/*              }}*/}
+        {/*              onMouseLeave={(e) => {*/}
+        {/*                if (theme !== opt.value) e.currentTarget.style.background = 'transparent'*/}
+        {/*              }}*/}
+        {/*            >*/}
+        {/*              {opt.icon}*/}
+        {/*              <span className="text-[10px]">{opt.label}</span>*/}
+        {/*            </button>*/}
+        {/*          ))}*/}
+        {/*        </div>*/}
+        {/*      </div>*/}
+        {/*    </div>*/}
+        {/*  )}*/}
+        {/*</div>*/}
 
-        <div className="flex items-center gap-2 ml-2 pl-2 border-l" style={{ borderColor: 'var(--border-color)' }}>
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium cursor-pointer"
-            style={{ background: 'var(--teal)', color: 'white' }}
-          >
-            JA
-          </div>
-          <span className="text-sm hidden lg:block" style={{ color: 'var(--foreground)', paddingRight: '5px'}}>
-            Jay Allen
-          </span>
-        </div>
+        {/*<div className="flex items-center gap-2 ml-2 pl-2 border-l" style={{ borderColor: 'var(--border-color)' }}>*/}
+        {/*  <div*/}
+        {/*    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium cursor-pointer"*/}
+        {/*    style={{ background: 'var(--teal)', color: 'white' }}*/}
+        {/*  >*/}
+        {/*    JA*/}
+        {/*  </div>*/}
+        {/*  <span className="text-sm hidden lg:block" style={{ color: 'var(--foreground)', paddingRight: '5px'}}>*/}
+        {/*    Jay Allen*/}
+        {/*  </span>*/}
+        {/*</div>*/}
       </div>
     </header>
   )

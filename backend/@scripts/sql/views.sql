@@ -38,15 +38,23 @@ WHERE s.Active = 1
 GO
 
 CREATE view [dbo].[vw_Payroll_Comments] as
-SELECT DISTINCT [comment]
-FROM (SELECT mi.[comment]
-      FROM MonthlyInvoice AS mi
-      WHERE NOT mi.comment IS NULL
-      UNION
-      SELECT hi.[comment]
-      FROM HistofInvc_current AS hi
-      GROUP BY hi.[comment]
-      HAVING count(hi.[comment]) >= 100) t
+SELECT ROW_NUMBER() OVER (ORDER BY t.comment) AS [id],
+       comment,
+       [count]
+FROM (SELECT t.comment,
+             SUM(t.count) AS [count]
+      FROM (SELECT mi.[comment], COUNT(mi.[comment]) AS [count]
+            FROM MonthlyInvoice AS mi
+            WHERE mi.comment IS NOT NULL
+            GROUP BY mi.comment
+
+            UNION ALL
+
+            SELECT hi.[comment], COUNT(hi.[comment]) AS [count]
+            FROM HistofInvc_current AS hi
+            WHERE hi.comment IS NOT NULL
+            GROUP BY hi.comment) AS t
+      GROUP BY t.comment) AS t
 GO
 
 CREATE VIEW [dbo].[vw_Payroll_Payroll_Weeks]
@@ -72,16 +80,15 @@ GROUP BY WeekOf, Route
 GO
 CREATE VIEW [Accounting].[vw_Payroll_Aggregate]
 AS
-    SELECT
-        ROW_NUMBER() OVER (ORDER BY m.WeekOf, [route]) AS [ID],
-        m.WeekOf,
-        [route],
-        COUNT(*) AS [Task_Count],
-        COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) AS [Completed_Count],
-        -- Percent Complete Calculation
-        CAST(COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) * 100.0
-             / NULLIF(COUNT(*), 0) AS DECIMAL(10, 2)) AS [Percent_Complete]
-    FROM MonthlyInvoice AS m
-    GROUP BY WeekOf, Route
+SELECT ROW_NUMBER() OVER (ORDER BY m.WeekOf, [route])                  AS [ID],
+       m.WeekOf,
+       [route],
+       COUNT(*)                                                        AS [Task_Count],
+       COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) AS [Completed_Count],
+       -- Percent Complete Calculation
+       CAST(COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) * 100.0
+           / NULLIF(COUNT(*), 0) AS DECIMAL(10, 2))                    AS [Percent_Complete]
+FROM MonthlyInvoice AS m
+GROUP BY WeekOf, Route
 
 GO

@@ -18,7 +18,9 @@ def _managed_for(app_label: str):
 
 
 class PayrollComments(models.Model):
-    comment = models.TextField(primary_key=True, null=False, blank=False, db_column='comment')
+    id = models.AutoField(primary_key=True, db_column='id')
+    comment = models.TextField(max_length=50, null=False, blank=False, db_column='comment')
+    count = models.IntegerField(default=0, db_column='count')
 
     class Meta:
         db_table = 'vw_Payroll_Comments'
@@ -26,13 +28,15 @@ class PayrollComments(models.Model):
         verbose_name_plural = 'Payroll Comments'
         managed = False
 
+
 class PayrollAggregate(models.Model):
     id = models.AutoField(primary_key=True, db_column='ID')
     week_of = models.DateTimeField(null=True, blank=True, db_column='WeekOf')
     route = models.CharField(max_length=2, null=True, blank=True, db_column='route')
     task_count = models.IntegerField(null=True, blank=True, db_column='Task_Count')
     completed_count = models.IntegerField(null=True, blank=True, db_column='Completed_Count')
-    percent_complete = models.DecimalField(max_digits=19, decimal_places=2, default=Decimal('0.00'), db_column='Percent_Complete')
+    percent_complete = models.DecimalField(max_digits=19, decimal_places=2, default=Decimal('0.00'),
+                                           db_column='Percent_Complete')
 
     class Meta:
         db_table = 'Accounting.vw_Payroll_Aggregate'
@@ -102,7 +106,7 @@ class PSelect(models.Model):
     emp_id = models.CharField(max_length=50, null=True, blank=True, db_column='EmpID',
                               validators=[MinLengthValidator(1)])
     emp_name = models.CharField(max_length=50, null=True, blank=True, db_column='EmpName',
-                              validators=[MinLengthValidator(1)])
+                                validators=[MinLengthValidator(1)])
     start = models.DateTimeField(null=True, blank=True, db_column='start')
     end = models.DateTimeField(null=True, blank=True, db_column='End')
     week_done = models.DateTimeField(null=True, blank=True, db_column='WeekDone')
@@ -195,6 +199,7 @@ class PSelect(models.Model):
 
     def __str__(self):
         return f"PSelect {self.uid} (Emp: {self.emp_id})"
+
 
 class PSelectTable(models.Model):
     uid = models.AutoField(primary_key=True, db_column='UID')

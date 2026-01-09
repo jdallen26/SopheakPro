@@ -20,8 +20,7 @@ export class AdvancedCombo {
             debounceMs: 160,
             minChars: 0,
             maxItems: 200,
-            onChange: () => {
-            },
+            onChange: () => {},
             confirmCreate: false,
             createHandler: null,
             appendToBody: true

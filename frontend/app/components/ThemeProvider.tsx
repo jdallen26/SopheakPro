@@ -6,7 +6,7 @@ type Props = { children: React.ReactNode }
 
 export default function ThemeProvider({ children }: Props) {
   return (
-    <NextThemeProvider attribute="class" defaultTheme="system" enableSystem={true}>
+    <NextThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       {children}
     </NextThemeProvider>
   )

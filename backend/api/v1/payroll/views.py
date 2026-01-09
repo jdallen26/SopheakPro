@@ -31,7 +31,7 @@ def comments(request):
     refresh = payload.get('refresh') in (True, '1', 'true', 'True')
     cc = request.META.get('HTTP_CACHE_CONTROL', '')
     count_only = validate_bool(payload.get('count_only'))
-    limit = int(payload.get('limit', MAX_RECORDS))
+    min_count = payload.get('min_count')
 
     if comment not in ('', None):
         filters['comment__icontains'] = comment
@@ -39,10 +39,15 @@ def comments(request):
     if 'no-cache' in cc or 'max-age=0' in cc:
         refresh = True
 
+    if min_count is not None:
+        filters['count__gt'] = int(min_count)
+
+    suffix = f'_min_{min_count}' if min_count is not None else ''
+
     if comment:
-        cache_key = f'payroll_comments_v1_comment_{comment}'
+        cache_key = f'payroll_comments_v1_comment_{comment}{suffix}'
     else:
-        cache_key = f'payroll_comments_v1_all'
+        cache_key = f'payroll_comments_v1_all{suffix}'
 
     data = None if refresh else cache.get(cache_key)
 
@@ -56,13 +61,13 @@ def comments(request):
                 return JsonResponse({'count': len(data)})
 
             qs = Model.objects.filter(**filters) if filters else Model.objects.all()
-            
-            # Apply limit
-            qs = qs[:limit]
+            qs = qs.order_by('comment')
 
             def _fmt_comment(c):
                 return {
-                    'comment': getattr(c, 'comment', None),
+                    'id': getattr(c, 'id', None),
+                    'comment': getattr(c, 'comment', '').replace('"', '') if getattr(c, 'comment', None) else None,
+                    'count': getattr(c, 'count', 0),
                 }
 
             data = [_fmt_comment(c) for c in qs]
@@ -96,7 +101,7 @@ def sites(request):
     company = payload.get('company', '')
     taxable = validate_bool(payload.get('taxable', ''))
     in_monthly = validate_bool(payload.get('in_monthly', ''))
-    
+
     show_all_val = payload.get('show_all', False)
     if isinstance(show_all_val, str):
         show_all = validate_bool(show_all_val.lower() in ('1', 'true'))
@@ -108,7 +113,7 @@ def sites(request):
         count_only = validate_bool(count_only_val.lower() in ('1', 'true'))
     else:
         count_only = validate_bool(count_only_val)
-        
+
     limit = int(payload.get('limit', MAX_RECORDS))
 
     if cust_id not in ('', None):
@@ -163,7 +168,7 @@ def sites(request):
                 qs = model.objects.filter(**filters) if filters else model.objects.all()
                 if q:
                     qs = qs.filter(company__icontains=q) | qs.filter(cust_id__icontains=q)
-                
+
                 # Apply limit
                 qs = qs[:limit]
 
@@ -222,7 +227,7 @@ def insert_entry_task_selection(request):
         return JsonResponse({'count': 0, 'tasks': []})
 
     qs = Tasks.objects.filter(**filters) if filters else Tasks.objects.all()
-    
+
     # Apply limit
     qs = qs[:limit]
 
@@ -349,7 +354,7 @@ def pselect(request):
             return JsonResponse({'count': 0, 'pselect': []})
 
         p_rec = p_model.objects.filter(**filters) if filters else p_model.objects.all()
-        
+
         # Apply limit
         p_rec = p_rec[:limit]
 
@@ -488,7 +493,7 @@ def pselect_edit(request):
         if 'emp_id' in payload:
             val = payload['emp_id']
             r.emp_id = str(val) if val is not None and val != '' else None
-        
+
         if 'start' in payload:
             r.start = parse_date(payload['start'])
         if 'end' in payload:
@@ -506,11 +511,11 @@ def pselect_edit(request):
             r.mile_rate = payload['mile_rate']
         if 'chk_price_paid' in payload:
             r.chk_price_paid = validate_bool(payload['chk_price_paid'])
-        
+
         if 'reim_exp_currency' in payload:
             val = str(payload['reim_exp_currency']).replace('$', '').replace(',', '')
             r.reim_exp = val if val else None
-            
+
         if 'otime_percentage' in payload:
             r.otime_percentage = payload['otime_percentage']
         if 'spec_equip' in payload:
@@ -521,7 +526,7 @@ def pselect_edit(request):
             r.route = payload['route']
 
         r.save()
-        
+
         # Fetch the view record to return rich data (names, descriptions, etc)
         view_rec = View.objects.filter(uid=uid).first()
 
@@ -584,7 +589,7 @@ def payroll_aggregate(request):
                 'completed_count': agg.completed_count,
                 'percent_complete': f"{agg.percent_complete:.2f}%" if agg.percent_complete is not None else "0.00%"
             }
-        
+
         data = [_fmt(agg) for agg in qs]
         return JsonResponse({'count': len(data), 'data': data})
 

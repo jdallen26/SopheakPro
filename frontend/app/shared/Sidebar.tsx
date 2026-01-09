@@ -82,7 +82,7 @@ const MENU: MenuItem[] = [
     // {id: 'login', label: 'Login', icon: <LogIn size={18}/>, href: '/login'},
     // {id: 'profile', label: 'Profile', icon: <UserCircle size={18}/>, href: '/profile'},
     // {id: 'kanban', label: 'Kanban Board', icon: <LayoutGrid size={18}/>, href: '/kanban'},
-    // {id: 'ControlTesting', label: 'Control Testing', icon: <SiTestinglibrary size={18}/>, href: '/control-testing'},
+    {id: 'ControlTesting', label: 'Control Testing', icon: <SiTestinglibrary size={18}/>, href: '/control-testing'},
 ]
 
 export default function Sidebar(): React.ReactElement {

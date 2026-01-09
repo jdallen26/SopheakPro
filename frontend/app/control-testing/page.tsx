@@ -1,125 +1,135 @@
-'use client'
-import React from 'react'
-import { Users, UserPlus, Clock, Award, Briefcase } from 'lucide-react'
+'use client';
+import React, { useState, useEffect } from 'react';
+import { HybridSelectWrapper, HybridSelectOption, HybridSelectValue } from '@/app/shared/components/HybridSelectWrapper';
+import { toast } from '@/app/utils/toast';
 
-export default function HRPage() {
-  const stats = [
-    { label: 'TOTAL EMPLOYEES', value: '156', icon: <Users size={36} />, change: '+3 this month', bg: 'bg-teal' },
-    { label: 'NEW HIRES', value: '8', icon: <UserPlus size={36} />, change: 'Last 30 days', bg: 'bg-blue' },
-    { label: 'AVG TENURE', value: '2.4 yrs', icon: <Clock size={36} />, change: '+0.2 yrs', bg: 'bg-orange' },
-    { label: 'TRAINING COMPLETE', value: '94%', icon: <Award size={36} />, change: '+2%', bg: 'bg-green' },
-  ]
+interface ApiComment {
+    id: number;
+    comment: string;
+    count?: number;
+}
 
-  const departments = [
-    { name: 'Cleaning', employees: 65, manager: 'John Smith' },
-    { name: 'Maintenance', employees: 42, manager: 'Sarah Johnson' },
-    { name: 'Security', employees: 28, manager: 'Mike Davis' },
-    { name: 'Administration', employees: 21, manager: 'Lisa Wong' },
-  ]
+export default function ControlTestingPage() {
+    const [singleValue, setSingleValue] = useState<string | number | null>(null);
+    const [multiValue, setMultiValue] = useState<(string | number)[]>([]);
+    const [commentOptions, setCommentOptions] = useState<HybridSelectOption[]>([]);
+    const [selectKey, setSelectKey] = useState(0); // Key to force re-render
 
-  const recentHires = [
-    { name: 'Alex Thompson', position: 'Cleaning Technician', department: 'Cleaning', startDate: 'Dec 18, 2024' },
-    { name: 'Maria Garcia', position: 'Maintenance Worker', department: 'Maintenance', startDate: 'Dec 15, 2024' },
-    { name: 'James Wilson', position: 'Security Guard', department: 'Security', startDate: 'Dec 10, 2024' },
-  ]
+    // Dummy data for testing
+    const testOptions: HybridSelectOption[] = [
+        { id: 1, label: 'Alice Johnson', value: '1', description: 'Software Engineer', icon: 'user' },
+        { id: 2, label: 'Bob Smith', value: '2', description: 'Product Manager', icon: 'user-tie' },
+        { id: 3, label: 'Charlie Brown', value: '3', description: 'Designer', icon: 'pen-nib' },
+        { id: 4, label: 'David Wilson', value: '4', description: 'QA Tester', icon: 'bug' },
+        { id: 5, label: 'Eva Davis', value: '5', description: 'HR Specialist', icon: 'users' },
+    ];
 
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <h1 className="text-xl font-semibold" style={{ color: 'var(--foreground)' }}>Human Resources</h1>
-        <span className="text-sm" style={{ color: 'var(--foreground-muted)' }}>Manage employees and departments</span>
-      </div>
+    useEffect(() => {
+        const fetchComments = async () => {
+            const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.1.50:8000').replace(/\/$/, '');
+            try {
+                const res = await fetch(`${API_BASE}/api/v1/payroll/comments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        refresh: true,
+                        min_count: 50
+                    })
+                });
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className={`widget ${stat.bg} text-white rounded overflow-hidden`}>
-            <div className="widget-stats relative p-4">
-              <div className="stats-icon absolute right-4 top-1/2 -translate-y-1/2 opacity-30">
-                {stat.icon}
-              </div>
-              <div className="stats-info">
-                <h4 className="text-xs font-semibold opacity-80 mb-1">{stat.label}</h4>
-                <p className="text-2xl font-light">{stat.value}</p>
-              </div>
-            </div>
-            <div className="stats-link">
-              <a href="#" className="block px-4 py-2 text-xs bg-black/20 hover:bg-black/30 text-white/80 hover:text-white">
-                {stat.change} <span className="ml-1">→</span>
-              </a>
-            </div>
-          </div>
-        ))}
-      </div>
+                const data = await res.json();
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="panel">
-          <div className="panel-heading flex items-center justify-between">
-            <span>Departments</span>
-            <div className="flex gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-400"></span>
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-            </div>
-          </div>
-          <div className="panel-body space-y-3">
-            {departments.map((dept) => (
-              <div
-                key={dept.name}
-                className="flex items-center justify-between p-3 rounded"
-                style={{ background: 'var(--background-secondary)' }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded flex items-center justify-center bg-teal text-white">
-                    <Briefcase size={18} />
-                  </div>
-                  <div>
-                    <div className="font-medium" style={{ color: 'var(--foreground)' }}>{dept.name}</div>
-                    <div className="text-xs" style={{ color: 'var(--foreground-muted)' }}>Manager: {dept.manager}</div>
-                  </div>
+                if (data && Array.isArray(data.comments)) {
+                    const formattedOptions = data.comments.map((c: ApiComment) => ({
+                        id: c.id,
+                        label: c.comment,
+                        value: c.id,
+                        // description: `Count: ${c.count}`,
+                        icon: 'comment'
+                    }));
+                    setCommentOptions(formattedOptions);
+                }
+            } catch (error) {
+                console.error("Failed to fetch comments", error);
+            }
+        };
+
+        fetchComments();
+    }, []);
+
+    // Handler for the single select change
+    const handleCommentChange = (value: HybridSelectValue, option: HybridSelectOption | HybridSelectOption[] | null) => {
+        // Example: Cancel the change if the specific ID is selected (e.g., ID 999)
+        const valueOverride = true;
+        if (value === 999 || value === '999' || valueOverride) {
+            toast('This selection is not allowed.', 'warning', 'Change Cancelled');
+            // Force re-render to reset the control to the previous value
+            setSelectKey(prev => prev + 1);
+            return; 
+        }
+
+        // Update state (commit the change)
+        setSingleValue(value as string | number | null);
+
+        // Example of accessing the full option object
+        if (option && !Array.isArray(option)) {
+            console.log("Selected Option Details:", option);
+            toast(`Selected: ${option.label} (ID: ${value})`, 'info', 'Selection Changed');
+        } else {
+            toast(`Selected ID: ${value}`, 'info', 'Selection Changed');
+        }
+    };
+
+    return (
+        <div className="p-6" style={{padding: '3px'}}>
+
+            <div className="flex flex-wrap">
+                {/* Panel 1: Single Select */}
+                <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg p-6 shadow-sm flex-1 min-w-[300px] m-[px]" style={{marginRight: '4px', padding: '12px'}}>
+                    <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Payroll Comments (Single)</h2>
+                    <div className="max-w-md"> {/* This is test control number 1 */}
+                        <HybridSelectWrapper 
+                            key={selectKey} // Add key prop here
+                            id="test-ctl-1"
+                            label="Select Comment" 
+                            placeholder="Search comments..."
+                            options={commentOptions}
+                            value={singleValue}
+                            onChange={handleCommentChange}
+                            onOpen={() => toast('Dropdown Opened', 'info', 'Event: Open')}
+                            onClose={() => toast('Dropdown Closed', 'info', 'Event: Close')}
+                            onInput={(val: string) => toast(`Input: ${val}`, 'info', 'Event: Input')}
+                            onLoad={(opts: HybridSelectOption[], term: string) => toast(`Loaded ${opts.length} options for "${term}"`, 'success', 'Event: Load')}
+                            onError={(err: unknown) => toast(`Error: ${String(err)}`, 'danger', 'Event: Error')}
+                            onCreate={(label: string, opt: HybridSelectOption) => toast(`Created: ${label}`, 'success', 'Event: Create')}
+                            showRecent
+                            lightMode={true}
+                        />
+                    </div>
+                    <div className="mt-4 p-3 rounded text-sm" style={{ background: 'var(--background-tertiary)', color: 'var(--foreground-secondary)' }}>
+                        Selected Value: <strong>{JSON.stringify(singleValue)}</strong>
+                    </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-semibold" style={{ color: 'var(--teal)' }}>{dept.employees}</div>
-                  <div className="text-xs" style={{ color: 'var(--foreground-muted)' }}>employees</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="panel">
-          <div className="panel-heading flex items-center justify-between">
-            <span>Recent Hires</span>
-            <div className="flex gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-400"></span>
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                {/* Panel 2: Multi Select */}
+                <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg p-6 shadow-sm flex-1 min-w-[300px] m-[3px]" style={{marginLeft: '4px', padding: '12px'}}>
+                    <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Hybrid Select (Multiple)</h2>
+                    <div className="max-w-md"> {/* This is test control number 2 */}
+                        <HybridSelectWrapper 
+                            label="Assign Team Members" 
+                            placeholder="Select multiple people..."
+                            options={testOptions}
+                            value={multiValue}
+                            onChange={(v) => setMultiValue(v as (string | number)[])}
+                            multiple
+                            lightMode
+                        />
+                    </div>
+                    <div className="mt-4 p-3 rounded text-sm" style={{ background: 'var(--background-tertiary)', color: 'var(--foreground-secondary)' }}>
+                        Selected Values: <strong>{JSON.stringify(multiValue)}</strong>
+                    </div>
+                </div>
             </div>
-          </div>
-          <div className="panel-body p-0">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Position</th>
-                  <th>Start Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentHires.map((hire) => (
-                  <tr key={hire.name}>
-                    <td style={{ fontWeight: 500 }}>{hire.name}</td>
-                    <td>
-                      <div>{hire.position}</div>
-                      <div className="text-xs" style={{ color: 'var(--foreground-muted)' }}>{hire.department}</div>
-                    </td>
-                    <td style={{ color: 'var(--foreground-muted)' }}>{hire.startDate}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
-      </div>
-    </div>
-  )
+    );
 }
