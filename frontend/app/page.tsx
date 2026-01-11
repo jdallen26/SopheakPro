@@ -96,12 +96,8 @@ export default function DashboardPage() {
                       style={{color: 'var(--foreground-muted)'}}>header small text goes here...</span>
             </div>
 
-            <div className="flex items-center gap-2">
-                <WeatherWidget />
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5"
-                style={{marginTop: '4px'}}
+                 style={{marginTop: '4px'}}
             >
                 <div className="lg:col-span-2 panel">
                     <div className="panel-heading flex items-center justify-between">
@@ -180,8 +176,12 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            <div className="flex items-center gap-2">
+                <WeatherWidget/>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5"
-                style={{marginTop: '4px'}}
+                 style={{marginTop: '4px'}}
             >
                 <div className="panel">
                     <div className="panel-heading flex items-center justify-between">
@@ -223,7 +223,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="panel"
-            style={{marginTop: '4px'}}
+                 style={{marginTop: '4px'}}
             >
                 <div className="panel-heading flex items-center justify-between">
                     <span>Todo List</span>

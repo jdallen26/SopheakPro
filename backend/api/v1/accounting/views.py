@@ -472,6 +472,8 @@ def edit_monthly_invoice_task(request):
                 'charge': getattr(p, 'charge', '') or '',
                 'done_by': getattr(p, 'done_by', '') or '',
                 'route': getattr(p, 'route', '') or '',
+                'work_order': getattr(p, 'work_order', '') or '',
+                'comment': getattr(p, 'comment', '') or ''
             }
 
         return JsonResponse({'count': 1, 'task': [_fmt_task(view_rec)]})

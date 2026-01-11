@@ -480,7 +480,7 @@ hybrid-select {
     --hs-font-size-description: 10px;
 
     --hs-bg: #ffffff;
-    --hs-bg-hover: #f8f9fa;
+    --hs-bg-hover: #e9ecef; /* Darker hover background */
     --hs-bg-selected: #e9ecef;
     --hs-bg-dropdown: #ffffff;
     --hs-bg-disabled: #f1f3f4;
@@ -497,6 +497,10 @@ hybrid-select {
     --hs-border-hover: #9ca3af;
     --hs-border-focus: #3b82f6;
     --hs-border-error: #ef4444;
+    --hs-border-success: #22c55e;
+    --hs-focus-border-width: 1px;
+
+
 
     --hs-ring: rgba(59, 130, 246, 0.15);
     --hs-ring-error: rgba(239, 68, 68, 0.15);
@@ -523,4 +527,44 @@ hybrid-select {
     width: 100%;
 
     --hs-dropdown-z-index: 99999;
+}
+
+hybrid-input {
+    --hi-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --hi-font-size: 10px;
+    --hi-font-size-label: 10px;
+    --hi-font-size-helper: 12px;
+
+    --hi-bg: #ffffff;
+    --hi-bg-hover: #f8f9fa;
+    --hi-bg-selected: #e9ecef;
+    --hi-bg-disabled: #f1f3f4;
+
+    --hi-text: #1a1a1a;
+    --hi-text-secondary: #6c757d;
+    --hi-text-placeholder: #9ca3af;
+    --hi-text-disabled: #9ca3af;
+
+    --hi-border: #d1d5db;
+    --hi-border-hover: #9ca3af;
+    --hi-border-focus: #3b82f6;
+    --hi-border-error: #ef4444;
+    --hi-border-success: #22c55e;
+    --hi-focus-border-width: 1px;
+
+    --hi-ring: rgba(59, 130, 246, 0.15);
+    --hi-ring-error: rgba(239, 68, 68, 0.15);
+    --hi-ring-success: rgba(34, 197, 94, 0.15);
+
+    --hi-radius: 4px;
+    --hi-height: 20px;
+    --hi-height-sm: 10px;
+    --hi-height-lg: 10px;
+
+    --hi-padding-x: 4px;
+    --hi-padding-y: 0px;
+    --hi-gap: 4px;
+
+    --hi-transition: 0.2s ease;
+    --hi-icon-size: 10px;
 }

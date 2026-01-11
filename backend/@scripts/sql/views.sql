@@ -80,15 +80,35 @@ GROUP BY WeekOf, Route
 GO
 CREATE VIEW [Accounting].[vw_Payroll_Aggregate]
 AS
-SELECT ROW_NUMBER() OVER (ORDER BY m.WeekOf, [route])                  AS [ID],
-       m.WeekOf,
-       [route],
-       COUNT(*)                                                        AS [Task_Count],
-       COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) AS [Completed_Count],
-       -- Percent Complete Calculation
-       CAST(COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) * 100.0
-           / NULLIF(COUNT(*), 0) AS DECIMAL(10, 2))                    AS [Percent_Complete]
+SELECT
+    ROW_NUMBER() OVER (ORDER BY m.WeekOf, [route]) AS [ID],
+    m.WeekOf,
+    [route],
+    COUNT(*) AS [Task_Count],
+    COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) AS [Completed_Count],
+    -- Percent Complete Calculation
+    CAST(COUNT(CASE WHEN DoneBy IS NOT NULL AND DoneBy <> '' THEN 1 END) * 100.0
+            / NULLIF(COUNT(*), 0) AS DECIMAL(10, 2)) AS [Percent_Complete],
+    SUM(COALESCE(CashPaid, 0)) AS CashPaid,
+    SUM(CASE
+            WHEN DoneBy IS NOT NULL
+                 AND DoneBy <> ''
+                 AND DoneBy NOT IN ('CANCELLED', 'NOT DONE')
+            THEN COALESCE(Charge, 0)
+            ELSE 0
+        END) AS Charges,
+    -- Total Tax Calculation
+    CAST(SUM(CASE
+            WHEN Taxable = 1
+                 AND ISNULL(Tax, 0) > 0
+                 AND DoneBy IS NOT NULL
+                 AND DoneBy <> ''
+                 AND DoneBy NOT IN ('CANCELLED', 'NOT DONE')
+            THEN COALESCE(Charge, 0) - (COALESCE(Charge, 0) / (1.0 + ISNULL(Tax, 0)))
+            ELSE 0
+        END) AS DECIMAL(19, 2)) AS TotalTax,
+    SUM(COALESCE(Price, 0)) AS TotalPrice,
+    SUM(COALESCE(comm, 0)) AS TotalCommissionPaid
 FROM MonthlyInvoice AS m
 GROUP BY WeekOf, Route
-
 GO

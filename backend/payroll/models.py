@@ -37,6 +37,11 @@ class PayrollAggregate(models.Model):
     completed_count = models.IntegerField(null=True, blank=True, db_column='Completed_Count')
     percent_complete = models.DecimalField(max_digits=19, decimal_places=2, default=Decimal('0.00'),
                                            db_column='Percent_Complete')
+    cash_paid = models.DecimalField(max_digits=19, decimal_places=2, null=True, blank=True, db_column='CashPaid')
+    charges = models.DecimalField(max_digits=19, decimal_places=2, null=True, blank=True, db_column='Charges')
+    total_tax = models.DecimalField(max_digits=19, decimal_places=2, null=True, blank=True, db_column='TotalTax')
+    total_price = models.DecimalField(max_digits=19, decimal_places=2, null=True, blank=True, db_column='TotalPrice')
+    total_commission_paid = models.DecimalField(max_digits=19, decimal_places=4, null=True, blank=True, db_column='TotalCommissionPaid')
 
     class Meta:
         db_table = 'Accounting.vw_Payroll_Aggregate'

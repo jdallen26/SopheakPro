@@ -587,7 +587,12 @@ def payroll_aggregate(request):
                 'route': agg.route,
                 'task_count': agg.task_count,
                 'completed_count': agg.completed_count,
-                'percent_complete': f"{agg.percent_complete:.2f}%" if agg.percent_complete is not None else "0.00%"
+                'percent_complete': f"{agg.percent_complete:.2f}%" if agg.percent_complete is not None else "0.00%",
+                'cash_paid': agg.cash_paid,
+                'charges': agg.charges,
+                'total_tax': agg.total_tax,
+                'total_price': agg.total_price,
+                'total_commission_paid': agg.total_commission_paid,
             }
 
         data = [_fmt(agg) for agg in qs]
