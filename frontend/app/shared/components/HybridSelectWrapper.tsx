@@ -32,6 +32,7 @@ export interface HybridSelectWrapperProps {
     onBlur?: (value: HybridSelectValue, option: HybridSelectOption | HybridSelectOption[] | null) => void;
     onChange?: (value: HybridSelectValue, option: HybridSelectOption | HybridSelectOption[] | null) => void;
     onFocus?: (event: React.FocusEvent<HTMLElement>) => void;
+    onKeyDown?: (event: React.KeyboardEvent<HTMLElement>) => void;
     onOpen?: () => void;
     onClose?: () => void;
     onInput?: (searchValue: string) => void;
@@ -97,6 +98,7 @@ export const HybridSelectWrapper = forwardRef<HybridSelectElement, HybridSelectW
         onCreate,
         onBlur,
         onFocus,
+        onKeyDown,
         className, 
         styles,
         label,
@@ -144,6 +146,7 @@ export const HybridSelectWrapper = forwardRef<HybridSelectElement, HybridSelectW
     const onBlurRef = useRef(onBlur);
     const onChangeRef = useRef(onChange);
     const onFocusRef = useRef(onFocus);
+    const onKeyDownRef = useRef(onKeyDown);
     const onOpenRef = useRef(onOpen);
     const onCloseRef = useRef(onClose);
     const onInputRef = useRef(onInput);
@@ -155,6 +158,7 @@ export const HybridSelectWrapper = forwardRef<HybridSelectElement, HybridSelectW
         onBlurRef.current = onBlur;
         onChangeRef.current = onChange;
         onFocusRef.current = onFocus;
+        onKeyDownRef.current = onKeyDown;
         onOpenRef.current = onOpen;
         onCloseRef.current = onClose;
         onInputRef.current = onInput;
@@ -242,7 +246,7 @@ export const HybridSelectWrapper = forwardRef<HybridSelectElement, HybridSelectW
         };
     }, [multiple]);
 
-    const handleWrapperFocus = (event: React.FocusEvent<HybridSelectElement>) => {
+    const handleWrapperFocus = (event: React.FocusEvent<HTMLElement>) => {
         const controlDiv = event.currentTarget.shadowRoot?.querySelector('.control');
         controlDiv?.classList.add('focused');
         if (onFocusRef.current) {
@@ -261,6 +265,12 @@ export const HybridSelectWrapper = forwardRef<HybridSelectElement, HybridSelectW
             if (onBlurRef.current) {
                 onBlurRef.current(hostElement.value, hostElement.selectedOption);
             }
+        }
+    };
+    
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+        if (onKeyDownRef.current) {
+            onKeyDownRef.current(event);
         }
     };
 
@@ -296,6 +306,7 @@ export const HybridSelectWrapper = forwardRef<HybridSelectElement, HybridSelectW
         placeholder,
         onFocus: handleWrapperFocus,
         onBlur: handleWrapperBlur,
+        onKeyDown: handleKeyDown,
         required: required ? '' : undefined,
         disabled: disabled ? '' : undefined,
         readonly: readonly ? '' : undefined,

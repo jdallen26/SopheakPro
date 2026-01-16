@@ -3,6 +3,7 @@ import React from 'react'
 import dynamic from 'next/dynamic'
 import {DollarSign, Users, TrendingUp, Clock} from 'lucide-react'
 import WeatherWidget from './components/WeatherWidget';
+import PayrollAggregationWidget from './components/widgets/PayrollAggregationWidget';
 
 const ApexChart = dynamic(() => import('./components/ApexChart'), {ssr: false})
 
@@ -94,6 +95,11 @@ export default function DashboardPage() {
                 <h1 className="text-xl font-semibold" style={{color: 'var(--foreground)'}}>Dashboard</h1>
                 <span className="text-sm"
                       style={{color: 'var(--foreground-muted)'}}>header small text goes here...</span>
+            </div>
+
+            {/* New Payroll Aggregation Widget */}
+            <div className="grid grid-cols-1 gap-5" style={{marginTop: '4px'}}>
+                <PayrollAggregationWidget />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5"

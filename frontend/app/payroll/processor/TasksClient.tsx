@@ -25,6 +25,8 @@ interface Task {
     other_bill?: string
     type: string
     cash_paid?: string
+    commission?: string;
+    Comm?: string;
 
     [key: string]: unknown
 }
@@ -90,80 +92,17 @@ const formatToYyyyMmDd = (dateString: string): string => {
 };
 
 // Subcomponents used to optimize rendering and stabilize options
-const TaskDoneByCell = React.memo(({task, currentEmployeeName, onChange, onFocus}: {
+const TaskDoneByCell = React.memo(({task, options, onFocus, onKeyDown, onChange}: {
     task: Task,
-    currentEmployeeName: string,
-    onChange: (task: Task, employeeName: string) => void,
-    onFocus: (key: string, value: string) => void,
+    options: HybridSelectOption[],
+    onFocus: (task: Task) => void,
+    onKeyDown: (e: React.KeyboardEvent, task: Task) => void,
+    onChange: (task: Task, value: string) => void,
 }) => {
-    const selectRef = useRef<HybridSelectElement | null>(null);
     const currentDoneByVal = String(task.done_by ?? '');
-
-    useEffect(() => {
-        const handleNavigation = (e: Event) => {
-            e.preventDefault();
-            const target = e.target as HTMLElement;
-            const hs = target as unknown as HybridSelectElement;
-
-            if (hs && hs._isOpen) {
-                let index = hs._highlightedIndex;
-                if (index === -1 && hs._filteredOptions && hs._filteredOptions.length > 0) {
-                    index = 0;
-                }
-                if (index >= 0 && hs._filteredOptions && hs._filteredOptions[index]) {
-                    hs._selectOption(hs._filteredOptions[index].id);
-                } else {
-                    hs.close();
-                }
-            }
-
-            const allElements = Array.from(document.querySelectorAll('*'));
-            const focusable = allElements.filter(el => {
-                const isHybrid = el.tagName.toLowerCase() === 'hybrid-select' || el.tagName.toLowerCase() === 'hybrid-input';
-                const isStandard = el.matches('a[href], button, input, textarea, select, details, [tabindex]:not([tabindex="-1"])');
-
-                if (!isHybrid && !isStandard) return false;
-                if (el.hasAttribute('disabled')) return false;
-
-                // Check visibility
-                return (el as HTMLElement).offsetParent !== null;
-            }) as HTMLElement[];
-
-            const currentIndex = focusable.indexOf(target);
-            const nextElement = focusable[currentIndex + 1];
-
-            if (nextElement) {
-                setTimeout(() => nextElement.focus(), 0);
-            }
-        };
-
-        const element = selectRef.current;
-        if (element) {
-            element.addEventListener('hybrid-select:arrow-right', handleNavigation);
-            element.addEventListener('hybrid-select:tab', handleNavigation);
-            return () => {
-                element.removeEventListener('hybrid-select:arrow-right', handleNavigation);
-                element.removeEventListener('hybrid-select:tab', handleNavigation);
-            };
-        }
-    }, []);
-
-    const options = useMemo(() => {
-        let opts: HybridSelectOption[] = [
-            {id: currentEmployeeName, label: currentEmployeeName, value: currentEmployeeName},
-            {id: 'CANCELLED', label: 'CANCELLED', value: 'CANCELLED'},
-            {id: 'NOT DONE', label: 'NOT DONE', value: 'NOT DONE'},
-            {id: '__blank__', label: '\u00A0', value: ''}
-        ];
-        if (currentDoneByVal && !opts.some(o => o.value === currentDoneByVal)) {
-            opts = [{id: currentDoneByVal, label: currentDoneByVal, value: currentDoneByVal}, ...opts];
-        }
-        return opts;
-    }, [currentEmployeeName, currentDoneByVal]);
 
     return (
         <HybridSelectWrapper
-            ref={selectRef}
             className="max-w-md"
             id={`doneby-hybrid-${task.uid}`}
             name={`doneby-hybrid-${task.uid}`}
@@ -173,10 +112,9 @@ const TaskDoneByCell = React.memo(({task, currentEmployeeName, onChange, onFocus
             required={true}
             options={options}
             clearable={false}
-            onChange={(val) => {
-                onChange(task, String(val));
-            }}
-            onFocus={() => onFocus(`done_by-${task.uid}`, currentDoneByVal)}
+            onChange={(val) => onChange(task, String(val))}
+            onFocus={() => onFocus(task)}
+            onKeyDown={(e) => onKeyDown(e as React.KeyboardEvent, task)}
         />
     );
 });
@@ -185,60 +123,11 @@ TaskDoneByCell.displayName = 'TaskDoneByCell';
 const TaskCommentCell = React.memo(({task, commentOptions, onChange, onFocus}: {
     task: Task,
     commentOptions: HybridSelectOption[],
-    onChange: (uid: number, val: string) => void,
-    onFocus: (key: string, value: string) => void,
+    onChange: (task: Task, val: string) => void,
+    onFocus: (task: Task) => void,
 }) => {
     const selectRef = useRef<HybridSelectElement | null>(null);
     const currentCommentVal = String(task.comment ?? '');
-
-    useEffect(() => {
-        const handleNavigation = (e: Event) => {
-            e.preventDefault();
-            const target = e.target as HTMLElement;
-            const hs = target as unknown as HybridSelectElement;
-
-            if (hs && hs._isOpen) {
-                let index = hs._highlightedIndex;
-                if (index === -1 && hs._filteredOptions && hs._filteredOptions.length > 0) {
-                    index = 0;
-                }
-                if (index >= 0 && hs._filteredOptions && hs._filteredOptions[index]) {
-                    hs._selectOption(hs._filteredOptions[index].id);
-                } else {
-                    hs.close();
-                }
-            }
-
-            const allElements = Array.from(document.querySelectorAll('*'));
-            const focusable = allElements.filter(el => {
-                const isHybrid = el.tagName.toLowerCase() === 'hybrid-select' || el.tagName.toLowerCase() === 'hybrid-input';
-                const isStandard = el.matches('a[href], button, input, textarea, select, details, [tabindex]:not([tabindex="-1"])');
-
-                if (!isHybrid && !isStandard) return false;
-                if (el.hasAttribute('disabled')) return false;
-
-                // Check visibility
-                return (el as HTMLElement).offsetParent !== null;
-            }) as HTMLElement[];
-
-            const currentIndex = focusable.indexOf(target);
-            const nextElement = focusable[currentIndex + 1];
-
-            if (nextElement) {
-                setTimeout(() => nextElement.focus(), 0);
-            }
-        };
-
-        const element = selectRef.current;
-        if (element) {
-            element.addEventListener('hybrid-select:arrow-right', handleNavigation);
-            element.addEventListener('hybrid-select:tab', handleNavigation);
-            return () => {
-                element.removeEventListener('hybrid-select:arrow-right', handleNavigation);
-                element.removeEventListener('hybrid-select:tab', handleNavigation);
-            };
-        }
-    }, []);
 
     const options = useMemo(() => {
         let rowCommentOptions = [...commentOptions];
@@ -263,11 +152,8 @@ const TaskCommentCell = React.memo(({task, commentOptions, onChange, onFocus}: {
             required={true}
             options={options}
             clearable={false}
-            onChange={(val) => {
-                toast(`Task ${task.uid} Comment changed to ${val}`, 'info');
-                onChange(task.uid, String(val));
-            }}
-            onFocus={() => onFocus(`comment-${task.uid}`, currentCommentVal)}
+            onChange={(val) => onChange(task, String(val))}
+            onFocus={() => onFocus(task)}
         />
     );
 });
@@ -284,7 +170,7 @@ export default function TasksClient(): React.ReactElement {
     const [progress, setProgress] = useState(0);
     const [progressText, setProgressText] = useState('');
     const mountedRef = useRef(false);
-    const originalValuesRef = useRef<Map<string, string>>(new Map());
+    const originalValuesRef = useRef<Map<string, Task>>(new Map());
 
     const updateProgress = useCallback((currentTasks: Task[]) => {
         if (!currentTasks || currentTasks.length === 0) {
@@ -433,171 +319,189 @@ export default function TasksClient(): React.ReactElement {
         void fetchComments();
     }, []);
 
-    const handleTaskChange = useCallback(async (taskOrUid: number | Task, field: keyof Task, value: string | number | boolean, currentEmployeeName?: string) => {
-        const uid = typeof taskOrUid === 'object' ? taskOrUid.uid : taskOrUid;
-        const originalValue = originalValuesRef.current.get(`${field}-${uid}`);
-
-        setTasks((prevTasks: Task[] | null) => {
-            if (!prevTasks) return null;
-            const updated = prevTasks.map(task =>
-                task.uid === uid ? {...task, [field]: value} as Task : task
-            );
-            updateProgress(updated);
-            return updated;
-        });
-        const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.1.50:8000').replace(/\/$/, '');
-
-        switch (field) {
-            case 'done_by':
-                try {
-                    const res = await fetch(`${API_BASE}/api/v1/accounting/edit_monthly_invoice_task`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            uid: uid,
-                            done_by: value
-                        })
-                    });
-
-                    if (!res.ok) {
-                        const errorText = await res.text();
-                        throw new Error(`Failed to save ${field}: ${res.status} ${errorText}`);
-                    }
-
-                    const data = await res.json();
-                    const updatedTask = data.task && data.task[0];
-
-                    if (updatedTask) {
-                        toast(`${field.replace('_', ' ')} for task ${uid} saved!`, 'success');
-                        originalValuesRef.current.set(`${field}-${uid}`, updatedTask[field]);
-                        setTasks((prevTasks: Task[] | null) => {
-                            if (!prevTasks) return null;
-                            const newTasks = prevTasks.map(t => t.uid === uid ? {
-                                ...t, ...updatedTask,
-                                done_by: String(updatedTask.done_by ?? '')
-                            } as Task : t);
-                            updateProgress(newTasks);
-                            return newTasks;
-                        });
-                    } else {
-                        throw new Error('Invalid response from server.');
-                    }
-                } catch (error) {
-                    console.error(`Failed to save ${field}:`, error);
-                    toast(`Error saving ${field.replace('_', ' ')}: ${(error as Error).message}`, 'danger');
-                    setTasks((prevTasks: Task[] | null) => {
-                        if (!prevTasks) return null;
-                        const reverted = prevTasks.map(task =>
-                            task.uid === uid ? {...task, [field]: originalValue ?? ''} as Task : task
-                        );
-                        updateProgress(reverted);
-                        return reverted;
-                    });
-                }
-                break;
-            case 'comment':
-                try {
-                    const res = await fetch(`${API_BASE}/api/v1/accounting/edit_monthly_invoice_task`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            uid: uid,
-                            [field]: value
-                        })
-                    });
-
-                    if (!res.ok) {
-                        const errorText = await res.text();
-                        throw new Error(`Failed to save ${field}: ${res.status} ${errorText}`);
-                    }
-
-                    const data = await res.json();
-                    const updatedTask = data.task && data.task[0];
-
-                    if (updatedTask) {
-                        toast(`${field.replace('_', ' ')} for task ${uid} saved!`, 'success');
-                        originalValuesRef.current.set(`${field}-${uid}`, updatedTask[field]);
-                        setTasks((prevTasks: Task[] | null) => {
-                            if (!prevTasks) return null;
-                            const newTasks = prevTasks.map(t => t.uid === uid ? {...t, ...updatedTask} as Task : t);
-                            updateProgress(newTasks);
-                            return newTasks;
-                        });
-                    } else {
-                        throw new Error('Invalid response from server.');
-                    }
-                } catch (error) {
-                    toast(`Error saving ${field.replace('_', ' ')}: ${(error as Error).message}`, 'danger');
-                    setTasks((prevTasks: Task[] | null) => {
-                        if (!prevTasks) return null;
-                        const reverted = prevTasks.map(task =>
-                            task.uid === uid ? {...task, [field]: originalValue} as Task : task
-                        );
-                        updateProgress(reverted);
-                        return reverted;
-                    });
-                }
-                break;
-            default:
-                break;
+    const handleFocus = useCallback((task: Task) => {
+        const key = `task-${task.uid}`;
+        if (!originalValuesRef.current.has(key)) {
+            originalValuesRef.current.set(key, task);
         }
-    }, [updateProgress]);
+    }, []);
+    
+    const handleSimpleSave = useCallback(async (task: Task, field: keyof Task, value: string) => {
+        const uid = task.uid;
+        const originalTask = originalValuesRef.current.get(`task-${uid}`);
 
-    const handleFocus = useCallback((key: string, value: string) => {
-        toast(`Focused Value: ${key} for task...`, 'info')
-        // console.log(`Focused Value: ${key} for task...`, `${value}`)
-        originalValuesRef.current.set(key, value);
+        const body = { [field]: value };
+
+        setTasks(prevTasks => prevTasks?.map(t => t.uid === uid ? { ...t, ...body } : t) || null);
+
+        try {
+            const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.1.50:8000').replace(/\/$/, '');
+            const res = await fetch(`${API_BASE}/api/v1/accounting/edit_monthly_invoice_task`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ uid, ...body })
+            });
+
+            if (!res.ok) throw new Error('Server responded with an error.');
+            
+            const updatedTask = { ...task, ...body };
+            originalValuesRef.current.set(`task-${uid}`, updatedTask);
+
+        } catch (error) {
+            setTasks(prevTasks => prevTasks?.map(t => t.uid === uid ? (originalTask || t) : t) || null);
+        }
     }, []);
 
-    const currentEmployeeName = useMemo(() => {
-        if (!paySelect || paySelect.length === 0 || employees.length === 0) {
-            return paySelect?.[0]?.emp_id ? String(paySelect[0].emp_id) : '';
+    const handleDoneBySave = useCallback(async (task: Task, value: string) => {
+        if (!paySelect || paySelect.length === 0) return;
+
+        const uid = task.uid;
+        const originalTask = originalValuesRef.current.get(`task-${uid}`);
+
+        const originalDoneBy = originalTask?.done_by ?? '';
+        const isSpecialStatus = ["", "CANCELLED", "NOT DONE", "REFUSED"].includes(originalDoneBy);
+        if (!isSpecialStatus && originalDoneBy !== paySelect[0].employee_name && value !== originalDoneBy) {
+            setTasks(prevTasks => prevTasks?.map(t => t.uid === uid ? (originalTask || t) : t) || null);
+            return;
         }
+        
+        let updatedTask: Task | null = null;
+        let apiPayload: Partial<Task> = {};
+
+        setTasks(prevTasks => {
+            if (!prevTasks) return null;
+            return prevTasks.map(t => {
+                if (t.uid !== uid) return t;
+
+                const tempTask = { ...t, done_by: value };
+
+                const employeeCommissionRate = paySelect[0].commission_rate ?? 0.35;
+                const siteCommission = parseFloat(tempTask.site_commission);
+                const finalCommissionRate = siteCommission > 0 ? siteCommission : employeeCommissionRate;
+                
+                tempTask.commission = String(finalCommissionRate);
+                tempTask.Comm = String(Math.floor(100 * (finalCommissionRate * parseFloat(tempTask.price) + 0.00501)) / 100);
+
+                const newValue = String(value);
+                if (newValue === "" || newValue === "NOT DONE") {
+                    tempTask.emp_id = "";
+                    tempTask.cash_paid = "";
+                    tempTask.temp_deposit_date = "";
+                    if (new Date(tempTask.week_of) < new Date(tempTask.week_done)) {
+                        tempTask.week_done = tempTask.week_of;
+                    }
+                } else if (newValue === "CANCELLED") {
+                    tempTask.emp_id = String(paySelect[0].emp_id);
+                    tempTask.cash_paid = "";
+                    tempTask.temp_deposit_date = "";
+                } else { // Normal completion
+                    tempTask.emp_id = String(paySelect[0].emp_id);
+                    if (paySelect[0].start && tempTask.week_done !== paySelect[0].start) {
+                        tempTask.week_done = paySelect[0].start;
+                    }
+
+                    const isCOD = tempTask.cod === 'True';
+                    const isOtherBill = tempTask.other_bill === 'True' && tempTask.type !== 'Windows';
+
+                    if ((isCOD || isOtherBill) && parseFloat(tempTask.price) > 0) {
+                        if (newValue === "REFUSED") {
+                            tempTask.cash_paid = "";
+                            tempTask.temp_deposit_date = "";
+                        } else {
+                            // TODO: Implement modal workflow to replace InputBox
+                            tempTask.cash_paid = tempTask.charge;
+                            tempTask.temp_deposit_date = new Date().toLocaleDateString('en-US');
+                        }
+                    }
+                }
+                updatedTask = tempTask;
+                const { uid: taskUid, ...rest } = updatedTask;
+                apiPayload = rest;
+                return updatedTask;
+            });
+        });
+
+        try {
+            if (!updatedTask) throw new Error("Update failed");
+
+            const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.1.50:8000').replace(/\/$/, '');
+            const res = await fetch(`${API_BASE}/api/v1/accounting/edit_monthly_invoice_task`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ uid, ...apiPayload })
+            });
+
+            if (!res.ok) throw new Error('Server responded with an error.');
+            
+            originalValuesRef.current.set(`task-${uid}`, updatedTask);
+
+        } catch (error) {
+            setTasks(prevTasks => prevTasks?.map(t => t.uid === uid ? (originalTask || t) : t) || null);
+        }
+    }, [paySelect]);
+
+    const currentEmployeeName = useMemo(() => {
+        if (!paySelect || paySelect.length === 0 || !employees || employees.length === 0) return '';
         const empId = paySelect[0].emp_id;
         const employee = employees.find(e => e.id === empId);
         return employee ? employee.name : String(empId);
     }, [paySelect, employees]);
 
-    const handleWorkOrderBlur = useCallback(async (uid: number, newValue: string) => {
-        const originalValue = originalValuesRef.current.get(`wo-${uid}`);
-        if (newValue !== originalValue) {
-            try {
-                const API_BASE = (process.env.NEXT_PUBLIC_LOCAL_API_BASE_URL || 'http://192.168.1.50:8000').replace(/\/$/, '');
-                const res = await fetch(`${API_BASE}/api/v1/accounting/edit_monthly_invoice_task`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        uid: uid,
-                        work_order: newValue
-                    })
-                });
+    const doneByOptions = useMemo(() => {
+        const opts: HybridSelectOption[] = [
+            {id: 'CANCELLED', label: 'CANCELLED', value: 'CANCELLED'},
+            {id: 'NOT DONE', label: 'NOT DONE', value: 'NOT DONE'},
+            {id: '__blank__', label: '\u00A0', value: ''}
+        ];
+        if (currentEmployeeName) {
+            opts.unshift({id: currentEmployeeName, label: currentEmployeeName, value: currentEmployeeName});
+        }
+        return opts;
+    }, [currentEmployeeName]);
 
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    throw new Error(`Failed to save work order: ${res.status} ${errorText}`);
-                }
+    const handleDoneByKeyDown = useCallback((e: React.KeyboardEvent, task: Task) => {
+        const moveFocus = () => {
+            const nextField = document.getElementById(`workorder-hybrid-${task.uid}`);
+            nextField?.focus();
+        };
 
-                const data = await res.json();
-                const updatedTask = data.task && data.task[0];
+        if (['Enter', 'Tab', 'ArrowRight'].includes(e.key)) {
+            e.preventDefault();
+            void handleDoneBySave(task, (e.target as HTMLInputElement).value);
+            moveFocus();
+        }
 
-                if (updatedTask) {
-                    toast(`Work Order for task ${uid} saved!`, 'success');
-                    originalValuesRef.current.set(`wo-${uid}`, updatedTask.work_order);
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            const originalDoneBy = originalValuesRef.current.get(`task-${task.uid}`)?.done_by ?? '';
+            const isSpecialStatus = ["", "CANCELLED", "NOT DONE", "REFUSED"].includes(originalDoneBy);
 
-                    setTasks((prevTasks: Task[] | null) => {
-                        if (!prevTasks) return null;
-                        const newTasks = prevTasks.map(t => t.uid === uid ? {...t, ...updatedTask} as Task : t);
-                        updateProgress(newTasks);
-                        return newTasks;
-                    });
-                } else {
-                    throw new Error('Invalid response from server.');
-                }
-            } catch (error) {
-                void handleTaskChange(uid, 'work_order', originalValue || '', currentEmployeeName);
+            if (isSpecialStatus || originalDoneBy === currentEmployeeName) {
+                const currentValue = (e.target as HTMLInputElement).value;
+                const currentIndex = doneByOptions.findIndex(opt => opt.value === currentValue);
+                const nextIndex = (currentIndex + 1) % doneByOptions.length;
+                const nextValue = String(doneByOptions[nextIndex].value ?? '');
+                setTasks(prevTasks => prevTasks?.map(t => t.uid === task.uid ? {...t, done_by: nextValue} : t) || null);
             }
         }
-    }, [handleTaskChange, updateProgress, currentEmployeeName]);
+    }, [handleDoneBySave, currentEmployeeName, doneByOptions]);
+    
+    const handleDoneByChange = useCallback((task: Task, value: string) => {
+        void handleDoneBySave(task, value);
+        const nextField = document.getElementById(`workorder-hybrid-${task.uid}`);
+        nextField?.focus();
+    }, [handleDoneBySave]);
+
+    const handleWorkOrderBlur = useCallback(async (uid: number, newValue: string) => {
+        const originalValue = originalValuesRef.current.get(`task-${uid}`)?.work_order;
+        if (newValue !== originalValue) {
+            const taskToUpdate = tasks?.find(t => t.uid === uid);
+            if (taskToUpdate) {
+                await handleSimpleSave(taskToUpdate, 'work_order', newValue);
+            }
+        }
+    }, [handleSimpleSave, tasks]);
+
 
     if (error) return <p className="p-4 text-red-600" style={{paddingLeft: '10px'}}>Error: {error}</p>
     if (tasks === null) return <p className="p-4" style={{paddingLeft: '10px'}}>Loading…</p>
@@ -829,9 +733,10 @@ export default function TasksClient(): React.ReactElement {
                                                 cellContent = (
                                                     <TaskDoneByCell
                                                         task={task}
-                                                        currentEmployeeName={currentEmployeeName}
-                                                        onChange={(t, val) => handleTaskChange(t, 'done_by', val, currentEmployeeName)}
+                                                        options={doneByOptions}
                                                         onFocus={handleFocus}
+                                                        onKeyDown={handleDoneByKeyDown}
+                                                        onChange={handleDoneByChange}
                                                     />
                                                 )
                                                 break;
@@ -842,7 +747,7 @@ export default function TasksClient(): React.ReactElement {
                                                     <TaskCommentCell
                                                         task={task}
                                                         commentOptions={commentOptions}
-                                                        onChange={(uid, val) => handleTaskChange(uid, 'comment', val, currentEmployeeName)}
+                                                        onChange={(task, val) => handleSimpleSave(task, 'comment', val)}
                                                         onFocus={handleFocus}
                                                     />
                                                 )
@@ -851,8 +756,9 @@ export default function TasksClient(): React.ReactElement {
                                             case 'work_order':
                                                 cellContent = (
                                                     <HybridInputWrapper
+                                                        id={`workorder-hybrid-${task.uid}`}
                                                         value={String(rawValue ?? '')}
-                                                        onFocus={(e) => handleFocus(`wo-${task.uid}`, (e.target as HTMLInputElement).value)}
+                                                        onFocus={() => handleFocus(task)}
                                                         onBlur={(e) => handleWorkOrderBlur(task.uid, (e.target as HTMLInputElement).value)}
                                                     />
                                                 )
