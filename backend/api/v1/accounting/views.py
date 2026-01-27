@@ -10,6 +10,7 @@ from django.apps import apps
 from base.settings import CACHE_TTL, MAX_RECORDS
 from utils.types import validate_bool
 from datetime import datetime
+import utils.strings as st
 
 # python
 @csrf_exempt
@@ -18,7 +19,8 @@ def deposit_list(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        # return JsonResponse({'count': 0, 'success': False, 'message': st.JSON_INVALID.format(JSON=request.body)}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.get_message(st.JSON_INVALID, JSON=request.body)} , status=400)
 
     q = str(payload.get('q', '')).strip()
     emp_id = payload.get('emp_id', '')
@@ -39,7 +41,7 @@ def deposit_list(request):
         elif description not in ('', None):
             filters['description__icontains'] = description
     except (ValueError, TypeError):
-        return JsonResponse({'count': 0, 'deposits': []})
+        return JsonResponse({'count': 0, 'success': False, 'message':  st.get_message(st.FILTER_INVALID, FILTER=filters)}, status=400)
 
     if 'no-cache' in cc or 'max-age=0' in cc:
         refresh = True
@@ -67,7 +69,7 @@ def deposit_list(request):
                 Model = None
 
             if Model is None:
-                return JsonResponse({'count': 0, 'deposits': []})
+                return JsonResponse({'count': 0, 'success': False, 'message': (st.get_message(st.INVALID_MODEL_NAME, NAME='accounting/Deposit'))}, status=400)
 
             qs = Model.objects.filter(**filters) if filters else Model.objects.all()
 
@@ -103,9 +105,9 @@ def deposit_list(request):
             cache.set(cache_key, data, CACHE_TTL)
 
     if count_only:
-        return JsonResponse({'count': len(data)})
+        return JsonResponse({'count': len(data), 'success': True})
 
-    return JsonResponse({'count': len(data), 'deposits': data})
+    return JsonResponse({'count': len(data), 'success': True, 'deposits': data})
 
 
 # python
@@ -115,7 +117,7 @@ def invoice_history_tasks(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.get_message(st.JSON_INVALID, JSON={'JSON provided is not valid JSON.'})}, status=400)
 
     q = str(payload.get('q', '')).strip()
     refresh = payload.get('refresh') in (True, '1', 'true', 'True')
@@ -215,8 +217,8 @@ def invoice_history_tasks(request):
             data = []
 
     if count_only:
-        return JsonResponse({'count': len(data)})
-    return JsonResponse({'count': len(data), 'tasks': data})
+        return JsonResponse({'count': len(data), 'success': True})
+    return JsonResponse({'count': len(data), 'success': True, 'tasks': data})
 
 
 # /invoice_tasks
@@ -226,7 +228,7 @@ def monthly_invoice_tasks(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.get_message(st.JSON_INVALID, JSON={'JSON provided is not valid JSON.'})}, status=400)
 
     q = str(payload.get('q', '')).strip()
     refresh = payload.get('refresh') in (True, '1', 'true', 'True')
@@ -337,8 +339,8 @@ def monthly_invoice_tasks(request):
             data = []
 
     if count_only:
-        return JsonResponse({'count': len(data)})
-    return JsonResponse({'count': len(data), 'tasks': data})
+        return JsonResponse({'count': len(data), 'success': True})
+    return JsonResponse({'count': len(data), 'success': True, 'tasks': data})
 
 
 @csrf_exempt
@@ -347,15 +349,15 @@ def edit_monthly_invoice_task(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.get_message(st.JSON_INVALID, JSON={'JSON provided is not valid JSON.'})}, status=400)
 
     uid = payload.get('uid') or request.POST.get('uid')
     if uid is None:
-        return JsonResponse({'error': 'missing uid'}, status=400)
+        return JsonResponse({'message': st.get_message(st.MISSING_PARAM, NAME='uid')}, status=400)
     try:
         uid = int(uid)
     except Exception:
-        return JsonResponse({'error': 'invalid uid'}, status=400)
+        return JsonResponse({'message': st.get_message(st.FIELD_CONVERSION_ERROR, NAME='uid', TYPE='int')}, status=400)
 
     try:
         # Use the actual table model for updates
@@ -363,12 +365,12 @@ def edit_monthly_invoice_task(request):
         # Use the view model for reading back rich data
         View = apps.get_model('payroll', 'PayrollTasks')
     except Exception:
-        return JsonResponse({'error': 'model not found'}, status=500)
+        return JsonResponse({'message': st.get_message(st.INVALID_MODEL_NAME, NAME='payroll/PayrollTasks')}, status=500)
 
     try:
         r = Table.objects.filter(uid=uid).first()
         if not r:
-            return JsonResponse({'count': 0, 'pselect': []}, status=404)
+            return JsonResponse({'count': 0, 'pselect': [], 'message': st.get_message(st.RECORDS_NOT_FOUND_FILTER, FILTER=f'uid = {str(uid)}')})
 
         def parse_date(val):
             if not val: return None
@@ -476,9 +478,9 @@ def edit_monthly_invoice_task(request):
                 'comment': getattr(p, 'comment', '') or ''
             }
 
-        return JsonResponse({'count': 1, 'task': [_fmt_task(view_rec)]})
+        return JsonResponse({'count': 1, 'success': True, 'task': [_fmt_task(view_rec)]})
     except Exception as e:
-        return JsonResponse({'error': f'update failed: {str(e)}'}, status=500)
+        return JsonResponse({'message': f'{st.get_message(st.RECORD_NOT_UPDATED, NAME="MonthlyInvoice Tasks")}: {str(e)}', 'success': False}, status=500)
 
 
 @csrf_exempt

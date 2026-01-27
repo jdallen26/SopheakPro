@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import traceback
+import utils.strings as st
 
 from django.apps import apps
 from django.contrib.admin.checks import refer_to_missing_field
@@ -28,7 +29,7 @@ def employees(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.get_message(st.JSON_INVALID, NAME=request.body)}, status=400)
 
     q = str(payload.get('q', '')).strip()
     filters = {}
@@ -213,22 +214,21 @@ def employees(request):
                  cache.set(cache_key, data, CACHE_TTL)
 
     if count_only:
-        return JsonResponse({'count': len(data)})
+        return JsonResponse({'count': len(data), 'success': True})
 
-    return JsonResponse({'count': len(data), 'employees': data})
+    return JsonResponse({'count': len(data), 'success': True, 'employees': data})
 
 
 @csrf_exempt
 @require_POST
 # /notes
-def notes(request):
+def employee_notes(request):
     # Not implemented yet
     return JsonResponse(
         {
             "success": True,
-            "status": 200,
-            "feature": "Geo Data",
-            "Message:": "Not Yet Implemented"
+            "feature": "Employee Notes",
+            "Message:": st.get_message(st.NOT_YET_IMPLEMENTED, NAME='notes')
         }
     )
 
@@ -236,13 +236,12 @@ def notes(request):
 @csrf_exempt
 @require_POST
 # /goe
-def geo(request):
+def employee_geo(request):
     return JsonResponse(
         {
             "success": True,
-            "status": 200,
-            "feature": "Geo Data",
-            "Message:": "Not Yet Implemented"
+            "feature": "Employee Geo Data",
+            "Message:": st.get_message(st.NOT_YET_IMPLEMENTED, NAME='employee_geo')
         }
     )
 
@@ -256,6 +255,7 @@ def create_employee(request):
     """
     test = request.POST.get('test', '')
 
+    # TODO: Get rid of the test message
     if test == '1':
         return JsonResponse({'success': True, 'message': 'Test successful'})
 
@@ -265,9 +265,9 @@ def create_employee(request):
         try:
             Model = apps.get_model('hr', 'Employee')
         except LookupError:
-            return JsonResponse({'error': 'Employee model not found'}, status=500)
+            return JsonResponse({'message': st.get_message(st.INVALID_MODEL_NAME, NAME ='hr/Employee'), 'success': False}, status=500)
 
-        # Create employee with provided data
+        # Create an employee with provided data
         employee = Model.objects.create(
             id=data.get('id'),
             name=data.get('name', ''),
@@ -417,7 +417,7 @@ def update_employee(request, emp_id):
 
         return JsonResponse({
             'success': True,
-            'message': 'Employee updated successfully',
+            'message': st.RECORD_UPDATED,
             'employee': {
                 'id': employee.id,
                 'name': employee.name,
@@ -427,9 +427,9 @@ def update_employee(request, emp_id):
         })
 
     except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.get_message(st.JSON_INVALID, NAME=data)}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'message': str(e), 'success': False}, status=500)
 
 
 @csrf_exempt
@@ -468,7 +468,7 @@ def delete_employee(request, emp_id):
         })
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': str(e), 'success': False}, status=500)
 
 
 @csrf_exempt

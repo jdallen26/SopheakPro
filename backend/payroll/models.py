@@ -197,7 +197,7 @@ class PSelect(models.Model):
         return None
 
     class Meta:
-        db_table = 'vw_Payroll_pselect'
+        db_table = 'Accounting.vw_Payroll_pselect'
         verbose_name = 'PSelect'
         verbose_name_plural = 'PSelects'
         managed = _managed_for('accounting')
@@ -209,6 +209,7 @@ class PSelect(models.Model):
 class PSelectTable(models.Model):
     uid = models.AutoField(primary_key=True, db_column='UID')
     emp_id = models.CharField(max_length=50, null=True, blank=True, db_column='EmpID')
+    emp_name = models.CharField(max_length=50, null=True, blank=True, db_column='EmpName')
     start = models.DateTimeField(null=True, blank=True, db_column='start')
     end = models.DateTimeField(null=True, blank=True, db_column='End')
     week_done = models.DateTimeField(null=True, blank=True, db_column='WeekDone')

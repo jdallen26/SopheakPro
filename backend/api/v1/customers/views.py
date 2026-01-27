@@ -5,6 +5,7 @@ import os
 import sys
 import traceback
 import json
+import utils.strings as st
 
 from django.db.models import Q
 from django.http import JsonResponse, HttpResponse
@@ -24,7 +25,7 @@ def sites(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.get_message(st.JSON_INVALID, JSON=request.body)}, status=400)
 
     q = str(payload.get('q', '')).strip()
     refresh = payload.get('refresh') in (True, '1', 'true', 'True')
@@ -174,8 +175,8 @@ def sites(request):
             data = []
 
     if count_only:
-        return JsonResponse({'count': len(data)})
-    return JsonResponse({'count': len(data), 'sites': data})
+        return JsonResponse({'count': len(data), 'success': True})
+    return JsonResponse({'count': len(data), 'success': True, 'sites': data})
 
 
 @csrf_exempt
@@ -187,7 +188,7 @@ def masters(request):
             "success": True,
             "status": 200,
             "feature": "Masters",
-            "Message:": "Not Yet Implemented"
+            "message:": st.get_message(st.NOT_YET_IMPLEMENTED,NAME='masters')
         }
     )
 
@@ -198,9 +199,8 @@ def geo(request):
     return JsonResponse(
         {
             "success": True,
-            "status": 200,
             "feature": "Site and Master Geo Data",
-            "Message:": "Not Yet Implemented"
+            "message:": st.get_message(st.NOT_YET_IMPLEMENTED, NAME='geo')
         }
     )
 

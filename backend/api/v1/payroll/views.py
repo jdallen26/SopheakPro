@@ -4,8 +4,9 @@ import os
 import sys
 import traceback
 import json
-from datetime import datetime
+import utils.strings as st
 
+from datetime import datetime
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
@@ -23,7 +24,7 @@ def comments(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.get_message(st.JSON_INVALID, NAME=request.body)}, status=400)
 
     filters = {}
     q = str(payload.get('q', '')).strip()
@@ -56,9 +57,9 @@ def comments(request):
             try:
                 Model = apps.get_model('payroll', 'PayrollComments')
             except LookupError:
-                return JsonResponse({'count': 0, 'comments': []})
+                return JsonResponse({'message': st.get_message(st.INVALID_MODEL_NAME,NAME='payroll/PayrollComments'), 'success': False}, status=500)
             if Model is None:
-                return JsonResponse({'count': len(data)})
+                return JsonResponse({'message': st.get_message(st.INVALID_MODEL_NAME,NAME='payroll/PayrollComments'), 'success': False}, status=500)
 
             qs = Model.objects.filter(**filters) if filters else Model.objects.all()
             qs = qs.order_by('comment')
@@ -79,9 +80,9 @@ def comments(request):
             cache.set(cache_key, data, CACHE_TTL)
 
     if count_only:
-        return JsonResponse({'count': len(data)})
+        return JsonResponse({'count': len(data), 'success': True})
 
-    return JsonResponse({'count': len(data), 'comments': data})
+    return JsonResponse({'count': len(data), 'success': True, 'comments': data})
 
 
 @csrf_exempt
@@ -91,7 +92,7 @@ def sites(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.get_message(st.JSON_INVALID, NAME=request.body)}, status=400)
 
     q = str(payload.get('q', '')).strip()
     filters = {}
@@ -147,20 +148,7 @@ def sites(request):
             data = data[:limit]
     else:
         try:
-            # Try likely model names and app labels to avoid LookupError
-            def _get_model(app_labels, names):
-                for app_label in app_labels:
-                    for name in names:
-                        try:
-                            return apps.get_model(app_label, name)
-                        except LookupError:
-                            continue
-                return None
-
-            model = _get_model(
-                app_labels=['payroll', 'api.payroll'],
-                names=['PayrollSites', 'PayrollSite', 'Sites', 'Site']
-            )
+            model = apps.get_model('payroll', 'PayrollSites')
             if model is None:
                 # model is not registered; return empty consistent response
                 data = []
@@ -203,7 +191,7 @@ def insert_entry_task_selection(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.INVALID_JSON}, status=400)
 
     filters = {}
     count_only = validate_bool(payload.get('count_only'))
@@ -254,7 +242,7 @@ def task_list(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.INVALID_JSON}, status=400)
 
     filters = {}
     cust_id = str(payload.get('cust_id', '')).strip()
@@ -328,7 +316,7 @@ def pselect(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.INVALID_JSON}, status=400)
 
     filters = {}
     psid = payload.get('psid', '')
@@ -393,7 +381,7 @@ def payroll_weeks(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.INVALID_JSON}, status=400)
 
     limit = int(payload.get('limit', MAX_RECORDS))
 
@@ -459,7 +447,7 @@ def pselect_edit(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.INVALID_JSON}, status=400)
 
     uid = payload.get('uid') or request.POST.get('uid')
     if uid is None:
@@ -564,7 +552,7 @@ def payroll_aggregate(request):
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
+        return JsonResponse({'count': 0, 'success': False, 'message': st.INVALID_JSON}, status=400)
 
     filters = {}
     week_of = payload.get('week_of')

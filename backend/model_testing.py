@@ -6,7 +6,34 @@ from django.core.serializers.json import DjangoJSONEncoder
 
 # Initialize Django (match manage.py)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "base.settings")
+os.environ["DJANGO_SETTINGS_MODULE"] = "base.settings"
+
+# Monkey patch to support SQL Server v17 (likely Azure SQL Edge or similar)
+# Copied from manage.py logic
+try:
+    import mssql.base
+    from django.db.utils import NotSupportedError
+
+    if hasattr(mssql.base.DatabaseWrapper, 'sql_server_version'):
+        original_prop = mssql.base.DatabaseWrapper.sql_server_version
+        if hasattr(original_prop, 'func'):
+            original_func = original_prop.func
+            
+            def patched_sql_server_version(self):
+                try:
+                    return original_func(self)
+                except NotSupportedError as e:
+                    # If the version is 17, suppress the error and return 16 (SQL Server 2022)
+                    if "SQL Server v17 is not supported" in str(e):
+                        return 16
+                    raise e
+            
+            mssql.base.DatabaseWrapper.sql_server_version = property(patched_sql_server_version)
+except Exception as e:
+    print(f"Warning: Failed to apply SQL Server version patch: {e}")
+
 import django
+
 django.setup()
 
 from django.apps import apps
@@ -14,13 +41,18 @@ from django.apps import apps
 DEFAULT_SAMPLE_LIMIT = 20
 LARGE_COUNT_WARNING = 100000
 
+
 def list_apps():
     apps_with_models = []
     for app_config in apps.get_app_configs():
         models = list(app_config.get_models())
         if models:
-            apps_with_models.append((app_config.label, models))
+            models.sort(key=lambda m: m.__name__)
+            apps_with_models.append((app_config.label.capitalize(), models))
+
+    apps_with_models.sort(key=lambda x: x[0])
     return apps_with_models
+
 
 def pick_from_list(prompt, items):
     if not items:
@@ -39,6 +71,7 @@ def pick_from_list(prompt, items):
             if 0 <= idx < len(items):
                 return idx
         print("Invalid selection, try again.")
+
 
 def show_model_structure(Model):
     print(f"\nModel: {Model.__module__}.{Model.__name__}")
@@ -60,6 +93,7 @@ def show_model_structure(Model):
         print(f"  - {f.name} {('(' + meta + ')') if meta else ''}")
     print("")
 
+
 def get_sample(Model, limit):
     try:
         qs = Model.objects.all()[:limit]
@@ -74,7 +108,8 @@ def get_sample(Model, limit):
                 except Exception:
                     row[fn] = None
             # include helpful read-only props if present (e.g. *_mmddyyyy)
-            for prop in ("start_mmddyyyy", "end_mmddyyyy", "week_done_mmddyyyy", "oldstart_mmddyyyy", "oldend_mmddyyyy", "billing_date_mmddyyyy"):
+            for prop in ("start_mmddyyyy", "end_mmddyyyy", "week_done_mmddyyyy", "oldstart_mmddyyyy", "oldend_mmddyyyy",
+                         "billing_date_mmddyyyy"):
                 if hasattr(obj, prop):
                     try:
                         row[prop] = getattr(obj, prop)
@@ -85,6 +120,7 @@ def get_sample(Model, limit):
     except Exception as e:
         print("Error fetching sample:", e)
         return []
+
 
 def model_menu(Model):
     while True:
@@ -131,6 +167,7 @@ def model_menu(Model):
         else:
             print("Invalid choice.")
 
+
 def main_loop():
     while True:
         print("\n== Apps ==")
@@ -148,7 +185,7 @@ def main_loop():
         if isinstance(sel, int):
             app_label, model_list = apps_models[sel]
             # prepare model names
-            model_names = [m.__name__ for m in model_list]
+            model_names = [m.__name__[0].upper() + m.__name__[1:] for m in model_list]
             while True:
                 print(f"\n== Models in `{app_label}` ==")
                 msel = pick_from_list("Select model: ", model_names)
@@ -160,6 +197,7 @@ def main_loop():
                 if isinstance(msel, int):
                     Model = model_list[msel]
                     model_menu(Model)
+
 
 if __name__ == "__main__":
     try:

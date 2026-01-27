@@ -3,6 +3,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-change-me-for-dev'
+SILENCE_UNSUPPORTED_MSSQL_VERSION = True
 
 DEBUG = True
 
@@ -60,9 +61,10 @@ WSGI_APPLICATION = 'base.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'mssql',
-        'NAME': 'MBMMaster',
+        'NAME': 'MBMMaster_WEB',
         'OPTIONS': {
-            'dsn': 'SopheakWebApp',
+            'dsn': 'SopheakPro',
+            'SILENCE_UNSUPPORTED_MSSQL_VERSION': True,
         },
     },
 }
